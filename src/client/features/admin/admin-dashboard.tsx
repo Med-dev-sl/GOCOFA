@@ -50,7 +50,20 @@ export function AdminDashboard({ fullName, username, role, onLogout }: AdminDash
             <p>GOCOFA control center</p>
             <h1>{activeItem}</h1>
           </div>
-          <span className="admin-role">{role}</span>
+          <div className="admin-header__actions">
+            <span className="admin-role">{role}</span>
+            <button
+              type="button"
+              className="admin-header__logout"
+              onClick={() => setLogoutModalOpen(true)}
+              aria-label="Logout"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M10 17l5-5-5-5M15 12H3M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+              </svg>
+              <span>Logout</span>
+            </button>
+          </div>
         </header>
 
         <div className="admin-welcome">
