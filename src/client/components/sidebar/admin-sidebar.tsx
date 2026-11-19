@@ -13,7 +13,6 @@ interface AdminSidebarProps {
   activeItem: string;
   items: SidebarNavItem[];
   onNavigate: (label: string) => void;
-  onLogout: () => void;
 }
 
 const iconPaths: Record<SidebarNavItem["icon"], string> = {
@@ -29,7 +28,6 @@ export function AdminSidebar({
   activeItem,
   items,
   onNavigate,
-  onLogout,
 }: AdminSidebarProps) {
   return (
     <aside className="admin-sidebar">

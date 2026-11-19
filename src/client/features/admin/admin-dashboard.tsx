@@ -30,7 +30,6 @@ export function AdminDashboard({ fullName, username, role, onLogout }: AdminDash
         activeItem={activeItem}
         items={navigation}
         onNavigate={setActiveItem}
-        onLogout={() => setLogoutModalOpen(true)}
       />
 
       <StatusModal
