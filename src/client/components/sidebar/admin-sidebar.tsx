@@ -1,10 +1,11 @@
 "use client";
 
 import Image from "next/image";
+import { useState } from "react";
 
 export interface SidebarNavItem {
   label: string;
-  icon: "grid" | "users" | "shield" | "settings";
+  icon: "grid" | "users" | "shield" | "settings" | "operations";
 }
 
 interface AdminSidebarProps {
@@ -20,6 +21,7 @@ const iconPaths: Record<SidebarNavItem["icon"], string> = {
   users: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm13 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75",
   shield: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z",
   settings: "M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm0-13v3m0 13v3M2 12h3m14 0h3M4.93 4.93l2.12 2.12m9.9 9.9 2.12 2.12m0-14.14-2.12 2.12m-9.9 9.9-2.12 2.12",
+  operations: "M4 6h16M4 12h16M4 18h16M7 4v4m5 2v4m5 2v4",
 };
 
 export function AdminSidebar({
@@ -29,6 +31,10 @@ export function AdminSidebar({
   items,
   onNavigate,
 }: AdminSidebarProps) {
+  const [operationsOpen, setOperationsOpen] = useState(true);
+
+  const operations = ["Farmers", "Farms & GIS", "Field Operations", "Verification"];
+
   return (
     <aside className="admin-sidebar">
       <div className="admin-sidebar__brand">
@@ -56,6 +62,35 @@ export function AdminSidebar({
           </button>
         ))}
       </nav>
+
+      <div className="admin-sidebar__operations">
+        <button
+          type="button"
+          className="admin-nav__item"
+          onClick={() => setOperationsOpen((prev) => !prev)}
+        >
+          <svg className="admin-nav__icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d={iconPaths.operations} />
+          </svg>
+          <span>Operations</span>
+          <span className={`admin-nav__arrow ${operationsOpen ? "open" : ""}`} aria-hidden="true" />
+        </button>
+        {operationsOpen && (
+          <div className="admin-nav__dropdown">
+            {operations.map((operation) => (
+              <button
+                key={operation}
+                type="button"
+                className={activeItem === operation ? "admin-nav__dropdown-item active" : "admin-nav__dropdown-item"}
+                aria-current={activeItem === operation ? "page" : undefined}
+                onClick={() => onNavigate(operation)}
+              >
+                {operation}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       <div className="admin-sidebar__bottom">
         <div className="admin-profile">
