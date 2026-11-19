@@ -407,27 +407,16 @@ body {
   padding: 0.25rem 0.25rem 1.25rem;
 }
 
-.admin-sidebar__mark {
-  width: 2.5rem;
-  height: 2.5rem;
-  display: grid;
-  place-items: center;
-  border-radius: 0.75rem;
-  background: var(--gocofa-green);
-  color: #fff;
-  font-family: var(--font-geist-mono);
-  font-weight: 800;
+.admin-sidebar__logo {
+  position: relative;
+  width: 2.75rem;
+  height: 2.75rem;
+  flex: 0 0 auto;
 }
 
-.admin-sidebar__brand div,
-.admin-profile__copy {
-  display: flex;
-  flex-direction: column;
+.admin-sidebar__logo img {
+  object-fit: contain;
 }
-
-.admin-sidebar__brand strong { color: #153426; }
-.admin-sidebar__brand small,
-.admin-profile__copy small { color: #87978f; }
 
 .admin-nav {
   display: flex;
@@ -458,8 +447,12 @@ body {
 .admin-nav__icon {
   width: 1.1rem;
   height: 1.1rem;
-  border: 2px solid currentColor;
-  border-radius: 0.25rem;
+  border: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .admin-nav__icon[data-icon="users"] { border-radius: 999px 999px 0.25rem 0.25rem; }
