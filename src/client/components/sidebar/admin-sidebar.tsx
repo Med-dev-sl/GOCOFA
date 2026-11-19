@@ -35,13 +35,12 @@ export function AdminSidebar({
     <aside className="admin-sidebar">
       <div className="admin-sidebar__brand">
         <div className="admin-sidebar__logo">
-          <Image src="/logo/logo.png" alt="GOCOFA" fill sizes="44px" />
+          <Image src="/logo/logo.png" alt="GOCOFA" fill sizes="72px" />
         </div>
-        <div>
-          <strong>GOCOFA</strong>
-          <small>Administration</small>
-        </div>
+        <small>Administration</small>
       </div>
+
+      <div className="admin-sidebar__divider" aria-hidden="true" />
 
       <nav className="admin-nav" aria-label="Main navigation">
         {items.map((item) => (
