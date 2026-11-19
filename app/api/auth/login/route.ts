@@ -1,8 +1,19 @@
 import { authenticateUser } from "@/src/server/modules/auth/auth.service";
 import { COOKIE_NAME, createSessionToken } from "@/src/server/modules/auth/session";
+import { consumeLoginAttempt } from "@/src/server/config/rate-limit";
 
 export async function POST(request: Request) {
   try {
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const attempt = consumeLoginAttempt(ip);
+
+    if (!attempt.allowed) {
+      return Response.json(
+        { error: "Too many login attempts. Please wait before trying again." },
+        { status: 429, headers: { "Retry-After": Math.ceil((attempt.resetAt - Date.now()) / 1000).toString() } },
+      );
+    }
+
     const body = await request.json();
     const username = typeof body.username === "string" ? body.username.trim() : "";
     const password = typeof body.password === "string" ? body.password : "";

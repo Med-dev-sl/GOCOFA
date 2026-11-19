@@ -20,7 +20,7 @@ async function seedAdmin() {
     VALUES ('admin', 'Full system administration access')
     ON CONFLICT (name) DO UPDATE SET description = EXCLUDED.description`;
 
-  const passwordHash = await bcrypt.hash(password, 12);
+  const passwordHash = await bcrypt.hash(password, 10);
   await sql`INSERT INTO users (full_name, username, email, password_hash, role_id)
     SELECT ${fullName}, ${username}, ${email}, ${passwordHash}, r.id
     FROM roles r WHERE r.name = 'admin'

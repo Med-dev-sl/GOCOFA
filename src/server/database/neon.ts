@@ -7,5 +7,5 @@ export function getDatabase() {
     throw new Error("DATABASE_URL is not configured");
   }
 
-  return neon(connectionString);
+  return neon(connectionString, { fullResults: false });
 }

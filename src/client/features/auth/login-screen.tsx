@@ -2,6 +2,8 @@
 
 import Image from "next/image";
 import { FormEvent, useState } from "react";
+import { StatusModal, StatusModalVariant } from "@/src/client/components/modal/status-modal";
+import { BrandSpinner } from "@/src/client/components/loading/brand-spinner";
 
 interface LoginUser {
   fullName: string;
@@ -18,6 +20,12 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [modal, setModal] = useState<{
+    open: boolean;
+    variant: StatusModalVariant;
+    title: string;
+    message: string;
+  }>({ open: false, variant: "info", title: "", message: "" });
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -36,11 +44,23 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps) {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Unable to sign in");
-      onAuthenticated(data.user);
+      setModal({
+        open: true,
+        variant: "success",
+        title: "Login successful",
+        message: `Welcome back, ${data.user.fullName}.`,
+      });
+      window.setTimeout(() => onAuthenticated(data.user), 900);
     } catch (loginError) {
-      setError(
-        loginError instanceof Error ? loginError.message : "Unable to sign in"
-      );
+      const message =
+        loginError instanceof Error ? loginError.message : "Unable to sign in";
+      setError(message);
+      setModal({
+        open: true,
+        variant: "error",
+        title: "Login failed",
+        message,
+      });
     } finally {
       setSubmitting(false);
     }
@@ -128,10 +148,14 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps) {
           </div>
 
           <button className="login-submit" type="submit" disabled={submitting}>
-            {submitting ? "Signing in..." : "Sign in"}
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M5 12h14M13 6l6 6-6 6" />
-            </svg>
+            {submitting ? <BrandSpinner label="Signing in" compact /> : (
+              <>
+                <span>Sign in</span>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M5 12h14M13 6l6 6-6 6" />
+                </svg>
+              </>
+            )}
           </button>
 
           {error && <p className="login-error">{error}</p>}
@@ -139,6 +163,15 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps) {
 
         <p className="login-footer">GOCOFA Administration Portal</p>
       </section>
+
+      <StatusModal
+        open={modal.open}
+        variant={modal.variant}
+        title={modal.title}
+        message={modal.message}
+        actionLabel={modal.variant === "success" ? "Open dashboard" : "Try again"}
+        onClose={() => setModal((current) => ({ ...current, open: false }))}
+      />
     </main>
   );
 }
