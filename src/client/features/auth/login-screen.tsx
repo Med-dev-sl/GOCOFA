@@ -3,11 +3,47 @@
 import Image from "next/image";
 import { FormEvent, useState } from "react";
 
-export function LoginScreen() {
-  const [showPassword, setShowPassword] = useState(false);
+interface LoginUser {
+  fullName: string;
+  username: string;
+  email: string;
+  role: string;
+}
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+interface LoginScreenProps {
+  onAuthenticated: (user: LoginUser) => void;
+}
+
+export function LoginScreen({ onAuthenticated }: LoginScreenProps) {
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setError("");
+    setSubmitting(true);
+
+    const form = new FormData(event.currentTarget);
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: form.get("username"),
+          password: form.get("password"),
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Unable to sign in");
+      onAuthenticated(data.user);
+    } catch (loginError) {
+      setError(
+        loginError instanceof Error ? loginError.message : "Unable to sign in"
+      );
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -86,15 +122,19 @@ export function LoginScreen() {
               <input type="checkbox" name="remember" />
               <span>Remember me</span>
             </label>
-            <button type="button" className="forgot-button">Forgot password?</button>
+            <button type="button" className="forgot-button">
+              Forgot password?
+            </button>
           </div>
 
-          <button className="login-submit" type="submit">
-            Sign in
+          <button className="login-submit" type="submit" disabled={submitting}>
+            {submitting ? "Signing in..." : "Sign in"}
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M5 12h14M13 6l6 6-6 6" />
             </svg>
           </button>
+
+          {error && <p className="login-error">{error}</p>}
         </form>
 
         <p className="login-footer">GOCOFA Administration Portal</p>
