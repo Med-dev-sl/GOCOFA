@@ -1,3 +1,5 @@
+import { DashboardShell } from "@/src/client/features/dashboard/dashboard-shell";
+
 export default function Home() {
-  return <main className="min-h-screen w-full" />;
+  return <DashboardShell />;
 }
