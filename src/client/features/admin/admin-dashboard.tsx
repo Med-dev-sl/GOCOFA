@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { AdminSidebar, SidebarNavItem } from "@/src/client/components/sidebar/admin-sidebar";
+import { StatusModal } from "@/src/client/components/modal/status-modal";
 
 interface AdminDashboardProps {
   fullName: string;
@@ -19,6 +20,7 @@ const navigation: SidebarNavItem[] = [
 
 export function AdminDashboard({ fullName, username, role, onLogout }: AdminDashboardProps) {
   const [activeItem, setActiveItem] = useState("Overview");
+  const [logoutModalOpen, setLogoutModalOpen] = useState(false);
 
   return (
     <main className="admin-dashboard">
@@ -28,7 +30,18 @@ export function AdminDashboard({ fullName, username, role, onLogout }: AdminDash
         activeItem={activeItem}
         items={navigation}
         onNavigate={setActiveItem}
-        onLogout={onLogout}
+        onLogout={() => setLogoutModalOpen(true)}
+      />
+
+      <StatusModal
+        open={logoutModalOpen}
+        variant="warning"
+        title="Logout of GOCOFA?"
+        message="Are you sure you want to end this administration session?"
+        actionLabel="Yes, logout"
+        cancelLabel="Stay logged in"
+        onClose={() => setLogoutModalOpen(false)}
+        onAction={onLogout}
       />
 
       <section className="admin-content">

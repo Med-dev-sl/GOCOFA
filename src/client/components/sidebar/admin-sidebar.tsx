@@ -59,14 +59,22 @@ export function AdminSidebar({
         ))}
       </nav>
 
-      <button type="button" className="admin-profile" onClick={onLogout} aria-label="Sign out">
-        <span className="admin-avatar">{fullName.charAt(0).toUpperCase()}</span>
-        <span className="admin-profile__copy">
-          <strong>{fullName}</strong>
-          <small>@{username}</small>
-        </span>
-        <span className="admin-profile__logout" aria-hidden="true">↗</span>
-      </button>
+      <div className="admin-sidebar__bottom">
+        <div className="admin-profile">
+          <span className="admin-avatar">{fullName.charAt(0).toUpperCase()}</span>
+          <span className="admin-profile__copy">
+            <strong>{fullName}</strong>
+            <small>@{username}</small>
+          </span>
+        </div>
+
+        <button type="button" className="admin-logout" onClick={onLogout}>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M10 17l5-5-5-5M15 12H3M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+          </svg>
+          <span>Logout</span>
+        </button>
+      </div>
     </aside>
   );
 }
