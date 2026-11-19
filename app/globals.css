@@ -414,9 +414,10 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  padding: 0.35rem 0.25rem 1.15rem;
+  gap: 0.25rem;
+  padding: 0.35rem 0.25rem 0.8rem;
   text-align: center;
+  flex-shrink: 0;
 }
 
 .admin-sidebar__brand small {
@@ -429,8 +430,21 @@ body {
 }
 
 .admin-sidebar__logo {
-  width: 4.25rem;
-  height: 4.25rem;
+  position: relative;
+  width: 4.5rem;
+  height: 4.5rem;
+  min-width: 4.5rem;
+  min-height: 4.5rem;
+  display: block;
+  overflow: visible;
+}
+
+.admin-sidebar__logo img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .admin-sidebar__divider {
@@ -444,6 +458,8 @@ body {
   flex-direction: column;
   gap: 0.35rem;
   margin-top: 1rem;
+  width: 100%;
+  flex: 0 0 auto;
 }
 
 .admin-nav__item {
@@ -512,6 +528,10 @@ body {
   text-align: left;
   cursor: pointer;
   transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+  width: 100%;
+  min-height: 3.75rem;
+  margin-top: 0;
+  overflow: hidden;
 }
 
 .admin-profile:hover {

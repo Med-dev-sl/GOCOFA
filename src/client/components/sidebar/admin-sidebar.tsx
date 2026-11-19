@@ -35,7 +35,7 @@ export function AdminSidebar({
     <aside className="admin-sidebar">
       <div className="admin-sidebar__brand">
         <div className="admin-sidebar__logo">
-          <Image src="/logo/logo.png" alt="GOCOFA" fill sizes="72px" />
+          <Image src="/logo/logo.png" alt="GOCOFA" width={40} height={40} priority />
         </div>
         <small>Administration</small>
       </div>
