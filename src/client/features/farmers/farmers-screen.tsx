@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Search, UserPlus, X } from "lucide-react";
 import dynamic from "next/dynamic";
+import { StatusModal, StatusModalVariant } from "@/src/client/components/modal/status-modal";
 
 const OpenStreetMap = dynamic(
   () => import("@/src/client/components/map/openstreet-map").then((module) => module.OpenStreetMap),
@@ -34,6 +35,12 @@ export function FarmersScreen() {
   const [locationStatus, setLocationStatus] = useState("");
   const [districtOptions, setDistrictOptions] = useState<Array<{ id: string; name: string; chiefdoms: Array<{ id: string; name: string }> }>>([]);
   const [selectedDistrict, setSelectedDistrict] = useState("");
+  const [modal, setModal] = useState<{
+    open: boolean;
+    variant: StatusModalVariant;
+    title: string;
+    message: string;
+  }>({ open: false, variant: "info", title: "", message: "" });
 
   async function loadFarmers() {
     setLoading(true);
@@ -125,9 +132,19 @@ export function FarmersScreen() {
       setSelectedDistrict("");
       setCoordinates(null);
       setLocationStatus("");
+      setModal({
+        open: true,
+        variant: "success",
+        title: "Farmer registered",
+        message: data.farmer?.farmer_code
+          ? `Farmer ${data.farmer.farmer_code} was saved successfully.`
+          : "The farmer record was saved successfully.",
+      });
       await loadFarmers();
     } catch (createError) {
-      setError(createError instanceof Error ? createError.message : "Unable to create farmer");
+      const message = createError instanceof Error ? createError.message : "Unable to create farmer";
+      setError(message);
+      setModal({ open: true, variant: "error", title: "Farmer not saved", message });
     } finally {
       setSubmitting(false);
     }
@@ -455,6 +472,15 @@ export function FarmersScreen() {
           </div>
         )}
       </section>
+
+      <StatusModal
+        open={modal.open}
+        variant={modal.variant}
+        title={modal.title}
+        message={modal.message}
+        actionLabel="Continue"
+        onClose={() => setModal((prev) => ({ ...prev, open: false }))}
+      />
     </motion.div>
   );
 }

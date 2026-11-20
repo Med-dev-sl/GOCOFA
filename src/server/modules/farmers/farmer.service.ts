@@ -1,4 +1,5 @@
 import { getDatabase } from "@/src/server/database/neon";
+import { farmerCreated } from "@/src/server/events/farmer.events";
 
 export interface CreateFarmerInput {
   firstName: string;
@@ -145,6 +146,12 @@ export async function createFarmer(input: CreateFarmerInput) {
 
   await sql`INSERT INTO farmer_status_history (farmer_id, from_status, to_status, reason)
     VALUES (${farmer.id}, NULL, 'draft', 'Farmer record created')`;
+
+  await farmerCreated({
+    farmerId: farmer.id,
+    farmerCode: farmer.farmer_code,
+    registeredBy: input.registeredBy || "",
+  });
 
   return farmer;
 }
