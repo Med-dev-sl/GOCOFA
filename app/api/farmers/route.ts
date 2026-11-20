@@ -41,6 +41,7 @@ export async function POST(request: NextRequest) {
       cooperativeId: body.cooperativeId,
       registeredBy: session.userId,
       photoUrl: body.photoUrl,
+      identificationPhotoUrl: body.identificationPhotoUrl,
       nationality: body.nationality,
       maritalStatus: body.maritalStatus,
       educationLevel: body.educationLevel,

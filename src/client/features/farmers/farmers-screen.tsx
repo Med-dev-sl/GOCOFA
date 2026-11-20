@@ -84,6 +84,11 @@ export function FarmersScreen() {
 
     const form = new FormData(event.currentTarget);
     try {
+      const passportPhoto = form.get("passportPhoto") as File | null;
+      const identificationPhoto = form.get("identificationPhoto") as File | null;
+      const photoUrl = await uploadToCloudinary(passportPhoto?.size ? passportPhoto : null, "gocofa/farmers/passport");
+      const identificationPhotoUrl = await uploadToCloudinary(identificationPhoto?.size ? identificationPhoto : null, "gocofa/farmers/identifications");
+
       const response = await fetch("/api/farmers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -110,12 +115,16 @@ export function FarmersScreen() {
           locationAccuracy: coordinates?.accuracy,
           districtId: form.get("districtId") || undefined,
           chiefdomId: form.get("chiefdomId") || undefined,
+          photoUrl,
+          identificationPhotoUrl,
         }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Unable to create farmer");
-      event.currentTarget.reset();
       setShowForm(false);
+      setSelectedDistrict("");
+      setCoordinates(null);
+      setLocationStatus("");
       await loadFarmers();
     } catch (createError) {
       setError(createError instanceof Error ? createError.message : "Unable to create farmer");
@@ -143,6 +152,34 @@ export function FarmersScreen() {
       () => setLocationStatus("Location permission was denied or unavailable."),
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 },
     );
+  }
+
+  async function uploadToCloudinary(file: File | null, folder: string) {
+    if (!file) return null;
+
+    const signatureResponse = await fetch("/api/media/upload-signature", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ folder }),
+    });
+    const signature = await signatureResponse.json();
+    if (!signatureResponse.ok) throw new Error(signature.error || "Unable to prepare photo upload");
+
+    const uploadData = new FormData();
+    uploadData.append("file", file);
+    uploadData.append("timestamp", String(signature.timestamp));
+    uploadData.append("folder", folder);
+    uploadData.append("api_key", signature.apiKey);
+    uploadData.append("signature", signature.signature);
+
+    const uploadResponse = await fetch(`https://api.cloudinary.com/v1_1/${signature.cloudName}/image/upload`, {
+      method: "POST",
+      body: uploadData,
+    });
+    const uploaded = await uploadResponse.json();
+    if (!uploadResponse.ok) throw new Error(uploaded.error?.message || "Unable to upload photo");
+
+    return uploaded.secure_url as string;
   }
 
   const filtered = farmers.filter((farmer) => {
@@ -225,11 +262,29 @@ export function FarmersScreen() {
             </label>
             <label className="grid gap-1.5 text-xs font-semibold text-slate-600">
               Education level
-              <input name="educationLevel" className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-50" />
+              <select name="educationLevel" className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-emerald-600">
+                <option value="">Select education level</option>
+                <option value="none">No formal education</option>
+                <option value="primary">Primary</option>
+                <option value="junior_secondary">Junior secondary</option>
+                <option value="senior_secondary">Senior secondary</option>
+                <option value="vocational">Vocational</option>
+                <option value="tertiary">Tertiary</option>
+              </select>
             </label>
             <label className="grid gap-1.5 text-xs font-semibold text-slate-600">
               Occupation
-              <input name="occupation" className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-50" />
+              <select name="occupation" className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-emerald-600">
+                <option value="">Select occupation</option>
+                <option value="farmer">Farmer</option>
+                <option value="cooperative_member">Cooperative member</option>
+                <option value="trader">Trader</option>
+                <option value="driver">Driver</option>
+                <option value="artisan">Artisan</option>
+                <option value="student">Student</option>
+                <option value="public_servant">Public servant</option>
+                <option value="other">Other</option>
+              </select>
             </label>
             <label className="grid gap-1.5 text-xs font-semibold text-slate-600">
               Household size
@@ -259,11 +314,36 @@ export function FarmersScreen() {
             </label>
             <label className="grid gap-1.5 text-xs font-semibold text-slate-600">
               Identification type
-              <input name="identificationType" className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-50" />
+              <select name="identificationType" className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-emerald-600">
+                <option value="">Select identification</option>
+                <option value="national_id">National ID</option>
+                <option value="voters_id">Voters ID</option>
+              </select>
             </label>
             <label className="grid gap-1.5 text-xs font-semibold text-slate-600">
-              Identification number
-              <input name="identificationNumber" className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-50" />
+              National ID number
+              <input name="identificationNumber" required className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-50" />
+            </label>
+          </div>
+          <div className="mt-5 grid gap-4 rounded-2xl border border-slate-200 bg-slate-50/60 p-4 sm:grid-cols-2">
+            <label className="grid gap-2 text-xs font-semibold text-slate-600">
+              Farmer passport photo
+              <input
+                name="passportPhoto"
+                type="file"
+                accept="image/*"
+                className="block w-full rounded-xl border border-slate-200 bg-white text-sm file:mr-3 file:border-0 file:bg-emerald-50 file:px-3 file:py-2.5 file:text-xs file:font-bold file:text-emerald-700"
+              />
+            </label>
+            <label className="grid gap-2 text-xs font-semibold text-slate-600">
+              National ID photo
+              <input
+                name="identificationPhoto"
+                type="file"
+                accept="image/*"
+                required
+                className="block w-full rounded-xl border border-slate-200 bg-white text-sm file:mr-3 file:border-0 file:bg-emerald-50 file:px-3 file:py-2.5 file:text-xs file:font-bold file:text-emerald-700"
+              />
             </label>
           </div>
           <div className="mt-5 overflow-hidden rounded-2xl border border-emerald-100 bg-white">

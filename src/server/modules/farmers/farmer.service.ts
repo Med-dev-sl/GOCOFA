@@ -15,6 +15,7 @@ export interface CreateFarmerInput {
   cooperativeId?: string;
   registeredBy?: string;
   photoUrl?: string;
+  identificationPhotoUrl?: string;
   nationality?: string;
   maritalStatus?: string;
   educationLevel?: string;
@@ -124,6 +125,11 @@ export async function createFarmer(input: CreateFarmerInput) {
   if (input.identificationType && input.identificationNumber) {
     await sql`INSERT INTO farmer_identifications (farmer_id, id_type, id_number, is_primary)
       VALUES (${farmer.id}, ${input.identificationType}, ${input.identificationNumber}, TRUE)`;
+  }
+
+  if (input.identificationType && input.identificationPhotoUrl) {
+    await sql`INSERT INTO farmer_documents (farmer_id, document_type, title, file_url, uploaded_by)
+      VALUES (${farmer.id}, 'identification_photo', ${input.identificationType}, ${input.identificationPhotoUrl}, ${input.registeredBy || null})`;
   }
 
   if (input.cooperativeId) {
