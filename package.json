@@ -18,10 +18,12 @@
     "dotenv": "^18.0.10",
     "jose": "^6.2.18",
     "leaflet": "^1.9.4",
+    "material-symbols": "^0.49.0",
     "next": "16.4.6",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-leaflet": "^5.0.0",
+    "recharts": "^3.11.0",
     "resend": "^6.39.0"
   },
   "devDependencies": {

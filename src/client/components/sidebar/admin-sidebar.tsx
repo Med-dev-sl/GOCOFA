@@ -25,9 +25,20 @@ const iconPaths: Record<SidebarNavItem["icon"], string> = {
   cooperatives: "M3 21h18M5 21V10l7-5 7 5v11M9 21v-6h6v6M8 11h1m6 0h1M8 15h1m6 0h1",
   cocoa: "M12 22V8m0 5c-4 0-7-2-8-6 4-1 7 1 8 6Zm0-3c4 0 7-2 8-6-4-1-7 1-8 6Zm0 3c-3 3-6 3-9 1 2-3 5-4 9-1Zm0 0c3 3 6 3 9 1-2-3-5-4-9-1Z",
   marketplace: "M3 9l2-5h14l2 5M5 9v12h14V9M9 21v-6h6v6M3 9c0 2 1.5 3 3.5 3S10 11 10 9m4 0c0 2 1.5 3 3.5 3S21 11 21 9",
-  finance: "M3 21h18M5 18V9m4 9V5m4 13v-6m4 6V8M3 6l5-3 4 4 5-4 4 3",
-  intelligence: "M4 19V5m0 14h16M7 16l3-4 3 2 4-6 3 2",
-  system: "M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm0-13v3m0 13v3M2 12h3m14 0h3",
+  finance: "M3 21V7l9-4 9 4v14M7 21v-6h10v6M7 10h10M9 10v11m6-11v11",
+  intelligence: "M4 19V5m0 14h16M7 16l3-3 3 2 5-7",
+  system: "M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm0-13.5v3m0 14v3M2 12h3m14 0h3M4.9 4.9l2.2 2.2m9.8 9.8 2.2 2.2m0-14.2-2.2 2.2m-9.8 9.8-2.2 2.2",
+};
+
+const materialIcons: Record<string, string> = {
+  Overview: "dashboard",
+  Operations: "work",
+  Cooperatives: "account_balance",
+  COCOA: "eco",
+  MARKETPLACE: "storefront",
+  FINANCE: "account_balance_wallet",
+  INTELLIGENCE: "analytics",
+  SYSTEM: "settings",
 };
 
 export function AdminSidebar({
@@ -74,9 +85,15 @@ export function AdminSidebar({
               onClick={() => onNavigate(item.label)}
               aria-current={activeItem === item.label ? "page" : undefined}
             >
-              <svg className="admin-nav__icon" viewBox="0 0 24 24" aria-hidden="true">
-                <path d={iconPaths[item.icon]} />
-              </svg>
+              {item.label === "Overview" ? (
+                <span className="material-symbols-outlined admin-nav__icon" aria-hidden="true">
+                  {materialIcons[item.label]}
+                </span>
+              ) : (
+                <svg className="admin-nav__icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d={iconPaths[item.icon]} />
+                </svg>
+              )}
               <span>{item.label}</span>
             </button>
           );
@@ -91,9 +108,9 @@ export function AdminSidebar({
                     className="admin-nav__item"
                     onClick={() => setOperationsOpen((prev) => !prev)}
                   >
-                    <svg className="admin-nav__icon" viewBox="0 0 24 24" aria-hidden="true">
-                      <path d={iconPaths.operations} />
-                    </svg>
+                    <span className="material-symbols-outlined admin-nav__icon" aria-hidden="true">
+                      {materialIcons.Operations}
+                    </span>
                     <span>Operations</span>
                     <span className={`admin-nav__arrow ${operationsOpen ? "open" : ""}`} aria-hidden="true" />
                   </button>
@@ -120,9 +137,9 @@ export function AdminSidebar({
                     className="admin-nav__item"
                     onClick={() => setCooperativesOpen((prev) => !prev)}
                   >
-                    <svg className="admin-nav__icon" viewBox="0 0 24 24" aria-hidden="true">
-                      <path d={iconPaths.cooperatives} />
-                    </svg>
+                    <span className="material-symbols-outlined admin-nav__icon" aria-hidden="true">
+                      {materialIcons.Cooperatives}
+                    </span>
                     <span>Cooperatives</span>
                     <span className={`admin-nav__arrow ${cooperativesOpen ? "open" : ""}`} aria-hidden="true" />
                   </button>
@@ -149,9 +166,9 @@ export function AdminSidebar({
                     className="admin-nav__item"
                     onClick={() => setCocoaOpen((prev) => !prev)}
                   >
-                    <svg className="admin-nav__icon" viewBox="0 0 24 24" aria-hidden="true">
-                      <path d={iconPaths.cocoa} />
-                    </svg>
+                    <span className="material-symbols-outlined admin-nav__icon" aria-hidden="true">
+                      {materialIcons.COCOA}
+                    </span>
                     <span>COCOA</span>
                     <span className={`admin-nav__arrow ${cocoaOpen ? "open" : ""}`} aria-hidden="true" />
                   </button>
@@ -178,9 +195,9 @@ export function AdminSidebar({
                     className="admin-nav__item"
                     onClick={() => setMarketplaceOpen((prev) => !prev)}
                   >
-                    <svg className="admin-nav__icon" viewBox="0 0 24 24" aria-hidden="true">
-                      <path d={iconPaths.marketplace} />
-                    </svg>
+                    <span className="material-symbols-outlined admin-nav__icon" aria-hidden="true">
+                      {materialIcons.MARKETPLACE}
+                    </span>
                     <span>MARKETPLACE</span>
                     <span className={`admin-nav__arrow ${marketplaceOpen ? "open" : ""}`} aria-hidden="true" />
                   </button>
@@ -207,9 +224,9 @@ export function AdminSidebar({
                     className="admin-nav__item"
                     onClick={() => setFinanceOpen((prev) => !prev)}
                   >
-                    <svg className="admin-nav__icon" viewBox="0 0 24 24" aria-hidden="true">
-                      <path d={iconPaths.finance} />
-                    </svg>
+                    <span className="material-symbols-outlined admin-nav__icon" aria-hidden="true">
+                      {materialIcons.FINANCE}
+                    </span>
                     <span>FINANCE</span>
                     <span className={`admin-nav__arrow ${financeOpen ? "open" : ""}`} aria-hidden="true" />
                   </button>
@@ -236,9 +253,9 @@ export function AdminSidebar({
                     className="admin-nav__item"
                     onClick={() => setIntelligenceOpen((prev) => !prev)}
                   >
-                    <svg className="admin-nav__icon" viewBox="0 0 24 24" aria-hidden="true">
-                      <path d={iconPaths.intelligence} />
-                    </svg>
+                    <span className="material-symbols-outlined admin-nav__icon" aria-hidden="true">
+                      {materialIcons.INTELLIGENCE}
+                    </span>
                     <span>INTELLIGENCE</span>
                     <span className={`admin-nav__arrow ${intelligenceOpen ? "open" : ""}`} aria-hidden="true" />
                   </button>
@@ -265,9 +282,9 @@ export function AdminSidebar({
                     className="admin-nav__item"
                     onClick={() => setSystemOpen((prev) => !prev)}
                   >
-                    <svg className="admin-nav__icon" viewBox="0 0 24 24" aria-hidden="true">
-                      <path d={iconPaths.system} />
-                    </svg>
+                    <span className="material-symbols-outlined admin-nav__icon" aria-hidden="true">
+                      {materialIcons.SYSTEM}
+                    </span>
                     <span>SYSTEM</span>
                     <span className={`admin-nav__arrow ${systemOpen ? "open" : ""}`} aria-hidden="true" />
                   </button>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { AdminSidebar, SidebarNavItem } from "@/src/client/components/sidebar/admin-sidebar";
 import { StatusModal } from "@/src/client/components/modal/status-modal";
+import { OverviewScreen } from "@/src/client/features/overview/overview-screen";
 
 interface AdminDashboardProps {
   fullName: string;
@@ -62,23 +63,15 @@ export function AdminDashboard({ fullName, username, role, onLogout }: AdminDash
           </div>
         </header>
 
-        <div className="admin-welcome">
-          <div>
-            <p>Welcome back</p>
-            <h2>{fullName}</h2>
-            <span>Your GOCOFA administration workspace is ready.</span>
+        {activeItem === "Overview" ? (
+          <OverviewScreen fullName={fullName} />
+        ) : (
+          <div className="module-placeholder">
+            <p>GOCOFA module</p>
+            <h2>{activeItem}</h2>
+            <span>This workspace is ready for implementation.</span>
           </div>
-          <div className="admin-welcome__status">
-            <span />
-            System operational
-          </div>
-        </div>
-
-        <div className="admin-stats">
-          <article><span>Users</span><strong>—</strong><small>Account directory</small></article>
-          <article><span>Roles</span><strong>1</strong><small>Admin role</small></article>
-          <article><span>Database</span><strong>Live</strong><small>Neon PostgreSQL</small></article>
-        </div>
+        )}
       </section>
     </main>
   );
