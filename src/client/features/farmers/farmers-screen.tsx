@@ -1,6 +1,14 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { motion } from "framer-motion";
+import { Search, UserPlus, X } from "lucide-react";
+import dynamic from "next/dynamic";
+
+const OpenStreetMap = dynamic(
+  () => import("@/src/client/components/map/openstreet-map").then((module) => module.OpenStreetMap),
+  { ssr: false, loading: () => <div className="gocofa-map-loading h-[280px]">Loading map...</div> },
+);
 
 interface Farmer {
   id: string;
@@ -22,6 +30,8 @@ export function FarmersScreen() {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
+  const [coordinates, setCoordinates] = useState<{ latitude: number; longitude: number; accuracy: number } | null>(null);
+  const [locationStatus, setLocationStatus] = useState("");
 
   async function loadFarmers() {
     setLoading(true);
@@ -43,9 +53,6 @@ export function FarmersScreen() {
     const controller = new AbortController();
 
     async function loadInitialFarmers() {
-      setLoading(true);
-      setError("");
-
       try {
         const response = await fetch("/api/farmers", { signal: controller.signal });
         const data = await response.json();
@@ -61,7 +68,6 @@ export function FarmersScreen() {
     }
 
     void loadInitialFarmers();
-
     return () => controller.abort();
   }, []);
 
@@ -83,6 +89,19 @@ export function FarmersScreen() {
           dateOfBirth: form.get("dateOfBirth"),
           phone: form.get("phone"),
           alternativePhone: form.get("alternativePhone"),
+          nationality: form.get("nationality"),
+          maritalStatus: form.get("maritalStatus"),
+          educationLevel: form.get("educationLevel"),
+          occupation: form.get("occupation"),
+          householdSize: form.get("householdSize"),
+          village: form.get("village"),
+          alternativeAddress: form.get("alternativeAddress"),
+          identificationType: form.get("identificationType"),
+          identificationNumber: form.get("identificationNumber"),
+          registrationSource: "field_officer",
+          latitude: coordinates?.latitude,
+          longitude: coordinates?.longitude,
+          locationAccuracy: coordinates?.accuracy,
         }),
       });
       const data = await response.json();
@@ -97,81 +116,243 @@ export function FarmersScreen() {
     }
   }
 
+  function captureLocation() {
+    if (!navigator.geolocation) {
+      setLocationStatus("Geolocation is not supported by this browser.");
+      return;
+    }
+
+    setLocationStatus("Capturing location...");
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setCoordinates({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+        });
+        setLocationStatus("Location captured successfully.");
+      },
+      () => setLocationStatus("Location permission was denied or unavailable."),
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 },
+    );
+  }
+
   const filtered = farmers.filter((farmer) => {
     const text = `${farmer.farmer_code} ${farmer.first_name} ${farmer.middle_name || ""} ${farmer.last_name}`.toLowerCase();
     return text.includes(search.toLowerCase());
   });
 
   return (
-    <div className="farmers-module">
-      <div className="farmers-module__heading">
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="space-y-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p>Operations / Farmers</p>
-          <h2>Farmer registry</h2>
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">Operations / Farmers</p>
+          <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">Farmer registry</h2>
+          <p className="mt-1 text-sm text-slate-500">Manage farmer profiles, contacts, and registration records.</p>
         </div>
-        <button type="button" className="farmers-add-button" onClick={() => setShowForm((open) => !open)}>
-          <span className="material-symbols-outlined">person_add</span>
-          Add farmer
+        <button
+          type="button"
+          onClick={() => setShowForm((open) => !open)}
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 text-sm font-bold text-white shadow-[0_8px_20px_rgba(4,120,87,.18)] transition hover:bg-emerald-800"
+        >
+          {showForm ? <X className="h-4 w-4" /> : <UserPlus className="h-4 w-4" />}
+          {showForm ? "Close form" : "Add farmer"}
         </button>
       </div>
 
       {showForm && (
-        <form className="farmer-form" onSubmit={handleCreate}>
-          <div className="farmer-form__grid">
-            <label><span>First name</span><input name="firstName" required /></label>
-            <label><span>Middle name</span><input name="middleName" /></label>
-            <label><span>Last name</span><input name="lastName" required /></label>
-            <label><span>Gender</span><select name="gender"><option value="">Select</option><option value="male">Male</option><option value="female">Female</option><option value="other">Other</option></select></label>
-            <label><span>Date of birth</span><input name="dateOfBirth" type="date" /></label>
-            <label><span>Primary phone</span><input name="phone" type="tel" /></label>
-            <label><span>Alternative phone</span><input name="alternativePhone" type="tel" /></label>
+        <motion.form
+          onSubmit={handleCreate}
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_8px_30px_rgba(15,23,42,.04)]"
+        >
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <label className="grid gap-1.5 text-xs font-semibold text-slate-600">
+              First name
+              <input name="firstName" required className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-50" />
+            </label>
+            <label className="grid gap-1.5 text-xs font-semibold text-slate-600">
+              Middle name
+              <input name="middleName" className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-50" />
+            </label>
+            <label className="grid gap-1.5 text-xs font-semibold text-slate-600">
+              Last name
+              <input name="lastName" required className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-50" />
+            </label>
+            <label className="grid gap-1.5 text-xs font-semibold text-slate-600">
+              Gender
+              <select name="gender" className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-emerald-600">
+                <option value="">Select gender</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+              </select>
+            </label>
+            <label className="grid gap-1.5 text-xs font-semibold text-slate-600">
+              Date of birth
+              <input name="dateOfBirth" type="date" className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-50" />
+            </label>
+            <label className="grid gap-1.5 text-xs font-semibold text-slate-600">
+              Primary phone
+              <input name="phone" type="tel" className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-50" />
+            </label>
+            <label className="grid gap-1.5 text-xs font-semibold text-slate-600">
+              Alternative phone
+              <input name="alternativePhone" className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-50" />
+            </label>
+            <label className="grid gap-1.5 text-xs font-semibold text-slate-600">
+              Nationality
+              <input name="nationality" className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-50" />
+            </label>
+            <label className="grid gap-1.5 text-xs font-semibold text-slate-600">
+              Marital status
+              <select name="maritalStatus" className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-emerald-600">
+                <option value="">Select marital status</option>
+                <option value="single">Single</option>
+                <option value="married">Married</option>
+                <option value="divorced">Divorced</option>
+                <option value="widowed">Widowed</option>
+              </select>
+            </label>
+            <label className="grid gap-1.5 text-xs font-semibold text-slate-600">
+              Education level
+              <input name="educationLevel" className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-50" />
+            </label>
+            <label className="grid gap-1.5 text-xs font-semibold text-slate-600">
+              Occupation
+              <input name="occupation" className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-50" />
+            </label>
+            <label className="grid gap-1.5 text-xs font-semibold text-slate-600">
+              Household size
+              <input name="householdSize" type="number" className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-50" />
+            </label>
+            <label className="grid gap-1.5 text-xs font-semibold text-slate-600">
+              Village
+              <input name="village" className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-50" />
+            </label>
+            <label className="grid gap-1.5 text-xs font-semibold text-slate-600">
+              Alternative address
+              <input name="alternativeAddress" className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-50" />
+            </label>
+            <label className="grid gap-1.5 text-xs font-semibold text-slate-600">
+              Identification type
+              <input name="identificationType" className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-50" />
+            </label>
+            <label className="grid gap-1.5 text-xs font-semibold text-slate-600">
+              Identification number
+              <input name="identificationNumber" className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-50" />
+            </label>
           </div>
-          <div className="farmer-form__actions">
-            <button type="button" className="farmer-form__cancel" onClick={() => setShowForm(false)}>Cancel</button>
-            <button type="submit" className="farmer-form__submit" disabled={submitting}>{submitting ? "Saving..." : "Save farmer"}</button>
+          <div className="mt-5 overflow-hidden rounded-2xl border border-emerald-100 bg-white">
+            <div className="flex items-center justify-between gap-3 border-b border-emerald-100 px-4 py-3">
+              <div>
+                <p className="text-sm font-bold text-slate-800">Field location</p>
+                <p className="mt-1 text-xs text-slate-500">{locationStatus || (coordinates ? `${coordinates.latitude.toFixed(6)}, ${coordinates.longitude.toFixed(6)} · ±${coordinates.accuracy.toFixed(0)}m` : "Capture the farmer's current GPS position.")}</p>
+              </div>
+              <button type="button" onClick={captureLocation} className="h-10 shrink-0 rounded-xl border border-emerald-200 bg-emerald-50 px-4 text-sm font-bold text-emerald-700">Capture GPS</button>
+            </div>
+            <OpenStreetMap
+              latitude={coordinates?.latitude}
+              longitude={coordinates?.longitude}
+              accuracy={coordinates?.accuracy}
+              height="280px"
+            />
           </div>
-        </form>
+          <div className="mt-4 flex justify-end gap-2">
+            <button type="button" onClick={() => setShowForm(false)} className="h-10 rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-600">
+              Cancel
+            </button>
+            <button type="submit" disabled={submitting} className="h-10 rounded-xl bg-emerald-700 px-4 text-sm font-bold text-white disabled:opacity-60">
+              {submitting ? "Saving..." : "Save farmer"}
+            </button>
+          </div>
+        </motion.form>
       )}
 
-      {error && <div className="farmers-error">{error}</div>}
+      {error && <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
-      <div className="farmers-table-card">
-        <div className="farmers-table-card__toolbar">
-          <div>
-            <p>Registered farmers</p>
-            <strong>{farmers.length.toLocaleString()}</strong>
+      <div className="grid gap-3 sm:grid-cols-3">
+        {[
+          ["All farmers", farmers.length, "groups"],
+          ["Draft", farmers.filter((farmer) => farmer.status === "draft").length, "edit_note"],
+          ["Verified", farmers.filter((farmer) => farmer.status === "verified" || farmer.status === "active").length, "verified"],
+        ].map(([label, value, icon]) => (
+          <div key={String(label)} className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_8px_30px_rgba(15,23,42,.035)]">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-bold uppercase tracking-[0.08em] text-slate-400">{label}</p>
+              <span className="material-symbols-outlined text-lg text-emerald-700">{icon}</span>
+            </div>
+            <p className="mt-3 text-2xl font-bold text-slate-900">{Number(value).toLocaleString()}</p>
           </div>
-          <label className="farmers-search">
-            <span className="material-symbols-outlined">search</span>
-            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search farmer" />
+        ))}
+      </div>
+
+      <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_8px_30px_rgba(15,23,42,.04)]">
+        <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-400">Registry</p>
+            <p className="mt-1 text-sm font-bold text-slate-800">{farmers.length.toLocaleString()} registered farmers</p>
+          </div>
+          <label className="flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-slate-400 sm:w-72">
+            <Search className="h-4 w-4" />
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search farmers"
+              className="min-w-0 flex-1 bg-transparent text-sm text-slate-700 outline-none"
+            />
           </label>
         </div>
 
         {loading ? (
-          <div className="farmers-loading"><span className="material-symbols-outlined">progress_activity</span>Loading farmers...</div>
+          <div className="grid min-h-56 place-items-center text-sm text-slate-400">Loading farmers...</div>
         ) : (
-          <div className="farmers-table-wrap">
-            <table className="farmers-table">
-              <thead><tr><th>Farmer</th><th>Farmer ID</th><th>District</th><th>Cooperative</th><th>Phone</th><th>Status</th></tr></thead>
-              <tbody>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead className="bg-slate-50/80 text-xs uppercase tracking-[0.08em] text-slate-400">
+                <tr>
+                  <th className="px-5 py-3">Farmer</th>
+                  <th className="px-5 py-3">Farmer ID</th>
+                  <th className="px-5 py-3">District</th>
+                  <th className="px-5 py-3">Cooperative</th>
+                  <th className="px-5 py-3">Phone</th>
+                  <th className="px-5 py-3">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
                 {filtered.map((farmer) => (
-                  <tr key={farmer.id}>
-                    <td><div className="farmer-name"><span>{farmer.first_name.charAt(0)}{farmer.last_name.charAt(0)}</span><div><strong>{farmer.first_name} {farmer.middle_name ? `${farmer.middle_name} ` : ""}{farmer.last_name}</strong><small>Registered {new Date(farmer.created_at).toLocaleDateString()}</small></div></div></td>
-                    <td>{farmer.farmer_code}</td>
-                    <td>{farmer.district_name || "—"}</td>
-                    <td>{farmer.cooperative_name || "—"}</td>
-                    <td>{farmer.primary_phone || "—"}</td>
-                    <td><span className={`farmer-status farmer-status--${farmer.status}`}>{farmer.status}</span></td>
+                  <tr key={farmer.id} className="transition hover:bg-slate-50/70">
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-3">
+                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-emerald-50 text-xs font-bold text-emerald-700">
+                          {farmer.first_name.charAt(0)}
+                          {farmer.last_name.charAt(0)}
+                        </span>
+                        <div>
+                          <p className="text-sm font-semibold text-slate-800">
+                            {farmer.first_name} {farmer.middle_name ? `${farmer.middle_name} ` : ""}
+                            {farmer.last_name}
+                          </p>
+                          <p className="text-xs text-slate-400">Registered {new Date(farmer.created_at).toLocaleDateString()}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-5 py-4 text-sm font-medium text-slate-600">{farmer.farmer_code}</td>
+                    <td className="px-5 py-4 text-sm text-slate-500">{farmer.district_name || "—"}</td>
+                    <td className="px-5 py-4 text-sm text-slate-500">{farmer.cooperative_name || "—"}</td>
+                    <td className="px-5 py-4 text-sm text-slate-500">{farmer.primary_phone || "—"}</td>
+                    <td className="px-5 py-4">
+                      <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold capitalize text-emerald-700">{farmer.status}</span>
+                    </td>
                   </tr>
                 ))}
-                {!filtered.length && (
-                  <tr><td colSpan={6}><div className="farmers-empty">No farmers found.</div></td></tr>
-                )}
+                {!filtered.length && <tr><td colSpan={6} className="px-5 py-12 text-center text-sm text-slate-400">No farmers found</td></tr>}
               </tbody>
             </table>
           </div>
         )}
-      </div>
-    </div>
+      </section>
+    </motion.div>
   );
 }

@@ -41,6 +41,19 @@ export async function POST(request: NextRequest) {
       cooperativeId: body.cooperativeId,
       registeredBy: session.userId,
       photoUrl: body.photoUrl,
+      nationality: body.nationality,
+      maritalStatus: body.maritalStatus,
+      educationLevel: body.educationLevel,
+      occupation: body.occupation,
+      householdSize: body.householdSize ? Number(body.householdSize) : undefined,
+      alternativeAddress: body.alternativeAddress,
+      village: body.village,
+      registrationSource: body.registrationSource || "field_officer",
+      identificationType: body.identificationType,
+      identificationNumber: body.identificationNumber,
+      latitude: body.latitude != null ? Number(body.latitude) : undefined,
+      longitude: body.longitude != null ? Number(body.longitude) : undefined,
+      locationAccuracy: body.locationAccuracy != null ? Number(body.locationAccuracy) : undefined,
     });
 
     return Response.json({ farmer }, { status: 201 });

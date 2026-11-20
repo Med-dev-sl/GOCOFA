@@ -12,13 +12,16 @@
     "db:migrate-farmers": "tsx src/server/scripts/migrate-farmers.ts"
   },
   "dependencies": {
+    "@heroui/react": "^3.2.7",
     "@neondatabase/serverless": "^1.2.1",
     "@types/leaflet": "^1.9.22",
     "bcryptjs": "^3.0.3",
     "cloudinary": "^2.11.0",
     "dotenv": "^18.0.10",
+    "framer-motion": "^14.14.0",
     "jose": "^6.2.18",
     "leaflet": "^1.9.4",
+    "lucide-react": "^1.76.0",
     "material-symbols": "^0.49.0",
     "next": "16.4.6",
     "react": "19.3.0",

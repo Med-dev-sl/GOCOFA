@@ -15,6 +15,19 @@ export interface CreateFarmerInput {
   cooperativeId?: string;
   registeredBy?: string;
   photoUrl?: string;
+  nationality?: string;
+  maritalStatus?: string;
+  educationLevel?: string;
+  occupation?: string;
+  householdSize?: number;
+  alternativeAddress?: string;
+  village?: string;
+  registrationSource?: string;
+  identificationType?: string;
+  identificationNumber?: string;
+  latitude?: number;
+  longitude?: number;
+  locationAccuracy?: number;
 }
 
 function generateFarmerCode() {
@@ -82,12 +95,16 @@ export async function createFarmer(input: CreateFarmerInput) {
     INSERT INTO farmers (
       farmer_code, first_name, middle_name, last_name, gender, date_of_birth,
       community_id, district_id, chiefdom_id, section_id, cooperative_id,
-      status, photo_url, registered_by
+      nationality, marital_status, education_level, occupation, household_size,
+      alternative_address, village, registration_source, status, photo_url, registered_by
     ) VALUES (
       ${farmerCode}, ${input.firstName}, ${input.middleName || null}, ${input.lastName},
       ${input.gender || null}, ${input.dateOfBirth || null}, ${input.communityId || null},
       ${input.districtId || null}, ${input.chiefdomId || null}, ${input.sectionId || null},
-      ${input.cooperativeId || null}, 'draft', ${input.photoUrl || null}, ${input.registeredBy || null}
+      ${input.cooperativeId || null}, ${input.nationality || null}, ${input.maritalStatus || null},
+      ${input.educationLevel || null}, ${input.occupation || null}, ${input.householdSize || null},
+      ${input.alternativeAddress || null}, ${input.village || null},
+      ${input.registrationSource || "field_officer"}, 'draft', ${input.photoUrl || null}, ${input.registeredBy || null}
     )
     RETURNING *
   `;
@@ -102,6 +119,22 @@ export async function createFarmer(input: CreateFarmerInput) {
   if (input.alternativePhone) {
     await sql`INSERT INTO farmer_contacts (farmer_id, contact_type, contact_value, is_primary)
       VALUES (${farmer.id}, 'phone', ${input.alternativePhone}, FALSE)`;
+  }
+
+  if (input.identificationType && input.identificationNumber) {
+    await sql`INSERT INTO farmer_identifications (farmer_id, id_type, id_number, is_primary)
+      VALUES (${farmer.id}, ${input.identificationType}, ${input.identificationNumber}, TRUE)`;
+  }
+
+  if (input.cooperativeId) {
+    await sql`INSERT INTO farmer_cooperative_memberships (farmer_id, cooperative_id, is_primary, is_active)
+      VALUES (${farmer.id}, ${input.cooperativeId}, TRUE, TRUE)
+      ON CONFLICT (farmer_id, cooperative_id) DO UPDATE SET is_primary = TRUE, is_active = TRUE`;
+  }
+
+  if (input.latitude != null && input.longitude != null) {
+    await sql`INSERT INTO farmer_locations (farmer_id, latitude, longitude, accuracy_meters, location_source, village, captured_by)
+      VALUES (${farmer.id}, ${input.latitude}, ${input.longitude}, ${input.locationAccuracy || null}, 'gps', ${input.village || null}, ${input.registeredBy || null})`;
   }
 
   await sql`INSERT INTO farmer_status_history (farmer_id, from_status, to_status, reason)
