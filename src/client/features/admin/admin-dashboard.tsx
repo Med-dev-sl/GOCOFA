@@ -13,9 +13,6 @@ interface AdminDashboardProps {
 
 const navigation: SidebarNavItem[] = [
   { label: "Overview", icon: "grid" },
-  { label: "Users", icon: "users" },
-  { label: "Roles", icon: "shield" },
-  { label: "Settings", icon: "settings" },
 ];
 
 export function AdminDashboard({ fullName, username, role, onLogout }: AdminDashboardProps) {

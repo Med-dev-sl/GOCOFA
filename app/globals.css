@@ -459,6 +459,14 @@ body {
   gap: 0.55rem;
   margin-top: 1.25rem;
   padding: 0 0.25rem;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #ccd9d0 transparent;
+  padding-bottom: 0.75rem;
 }
 
 .admin-nav__item {
@@ -532,6 +540,20 @@ body {
 }
 
 .admin-sidebar__operations > .admin-nav__item {
+  grid-template-columns: 2.5rem minmax(0, 1fr) 1.25rem;
+}
+
+.admin-sidebar__finance,
+.admin-sidebar__intelligence,
+.admin-sidebar__system,
+.admin-sidebar__marketplace {
+  margin-top: 0.35rem;
+}
+
+.admin-sidebar__finance > .admin-nav__item,
+.admin-sidebar__intelligence > .admin-nav__item,
+.admin-sidebar__system > .admin-nav__item,
+.admin-sidebar__marketplace > .admin-nav__item {
   grid-template-columns: 2.5rem minmax(0, 1fr) 1.25rem;
 }
 
@@ -739,4 +761,5 @@ body {
   margin-top: 0;
   padding: 1rem 0.75rem;
   background: linear-gradient(180deg, rgba(255,255,255,0), #fff 24%);
+  flex: 0 0 auto;
 }
