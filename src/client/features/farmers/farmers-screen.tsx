@@ -32,6 +32,8 @@ export function FarmersScreen() {
   const [showForm, setShowForm] = useState(false);
   const [coordinates, setCoordinates] = useState<{ latitude: number; longitude: number; accuracy: number } | null>(null);
   const [locationStatus, setLocationStatus] = useState("");
+  const [districtOptions, setDistrictOptions] = useState<Array<{ id: string; name: string; chiefdoms: Array<{ id: string; name: string }> }>>([]);
+  const [selectedDistrict, setSelectedDistrict] = useState("");
 
   async function loadFarmers() {
     setLoading(true);
@@ -54,6 +56,10 @@ export function FarmersScreen() {
 
     async function loadInitialFarmers() {
       try {
+        const locationResponse = await fetch("/api/locations/eastern-province", { signal: controller.signal });
+        const locationData = await locationResponse.json();
+        if (locationResponse.ok) setDistrictOptions(locationData.districts || []);
+
         const response = await fetch("/api/farmers", { signal: controller.signal });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || "Unable to load farmers");
@@ -102,6 +108,8 @@ export function FarmersScreen() {
           latitude: coordinates?.latitude,
           longitude: coordinates?.longitude,
           locationAccuracy: coordinates?.accuracy,
+          districtId: form.get("districtId") || undefined,
+          chiefdomId: form.get("chiefdomId") || undefined,
         }),
       });
       const data = await response.json();
@@ -226,6 +234,20 @@ export function FarmersScreen() {
             <label className="grid gap-1.5 text-xs font-semibold text-slate-600">
               Household size
               <input name="householdSize" type="number" className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-50" />
+            </label>
+            <label className="grid gap-1.5 text-xs font-semibold text-slate-600">
+              District
+              <select name="districtId" value={selectedDistrict} onChange={(event) => setSelectedDistrict(event.target.value)} className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-emerald-600">
+                <option value="">Select district</option>
+                {districtOptions.map((district) => <option key={district.id} value={district.id}>{district.name}</option>)}
+              </select>
+            </label>
+            <label className="grid gap-1.5 text-xs font-semibold text-slate-600">
+              Chiefdom
+              <select name="chiefdomId" className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-emerald-600">
+                <option value="">Select chiefdom</option>
+                {districtOptions.find((district) => district.id === selectedDistrict)?.chiefdoms.map((chiefdom) => <option key={chiefdom.id} value={chiefdom.id}>{chiefdom.name}</option>)}
+              </select>
             </label>
             <label className="grid gap-1.5 text-xs font-semibold text-slate-600">
               Village

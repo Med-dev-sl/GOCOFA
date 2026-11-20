@@ -9,7 +9,8 @@
     "lint": "eslint",
     "db:migrate": "tsx src/server/scripts/migrate.ts",
     "db:seed-admin": "tsx src/server/scripts/seed-admin.ts",
-    "db:migrate-farmers": "tsx src/server/scripts/migrate-farmers.ts"
+    "db:migrate-farmers": "tsx src/server/scripts/migrate-farmers.ts",
+    "db:seed-eastern-province": "tsx src/server/scripts/seed-eastern-province.ts"
   },
   "dependencies": {
     "@heroui/react": "^3.2.7",
