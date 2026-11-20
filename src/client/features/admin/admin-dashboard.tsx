@@ -4,6 +4,7 @@ import { useState } from "react";
 import { AdminSidebar, SidebarNavItem } from "@/src/client/components/sidebar/admin-sidebar";
 import { StatusModal } from "@/src/client/components/modal/status-modal";
 import { OverviewScreen } from "@/src/client/features/overview/overview-screen";
+import { FarmersScreen } from "@/src/client/features/farmers/farmers-screen";
 
 interface AdminDashboardProps {
   fullName: string;
@@ -14,6 +15,7 @@ interface AdminDashboardProps {
 
 const navigation: SidebarNavItem[] = [
   { label: "Overview", icon: "grid" },
+  { label: "Farmers", icon: "users" },
 ];
 
 export function AdminDashboard({ fullName, username, role, onLogout }: AdminDashboardProps) {
@@ -65,6 +67,8 @@ export function AdminDashboard({ fullName, username, role, onLogout }: AdminDash
 
         {activeItem === "Overview" ? (
           <OverviewScreen fullName={fullName} />
+        ) : activeItem === "Farmers" ? (
+          <FarmersScreen />
         ) : (
           <div className="module-placeholder">
             <p>GOCOFA module</p>
