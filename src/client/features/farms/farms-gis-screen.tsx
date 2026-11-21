@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Image from "next/image";
 import { FormEvent, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { StatusModal, StatusModalVariant } from "@/src/client/components/modal/status-modal";
@@ -34,6 +35,13 @@ interface Farm {
   created_at: string;
 }
 
+interface FarmPhotoUpload {
+  file: File;
+  previewUrl: string;
+  caption: string;
+  category: "land_overview" | "production_area" | "cocoa_trees" | "harvest" | "other";
+}
+
 export function FarmsGISScreen() {
   const [farmers, setFarmers] = useState<FarmerOption[]>([]);
   const [farms, setFarms] = useState<Farm[]>([]);
@@ -50,6 +58,7 @@ export function FarmsGISScreen() {
   const [sortBy, setSortBy] = useState("newest");
   const [importing, setImporting] = useState(false);
   const [modal, setModal] = useState<{ open: boolean; variant: StatusModalVariant; title: string; message: string }>({ open: false, variant: "info", title: "", message: "" });
+  const [landPhotos, setLandPhotos] = useState<FarmPhotoUpload[]>([]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -117,6 +126,12 @@ export function FarmsGISScreen() {
 
     const form = new FormData(event.currentTarget);
     try {
+      const uploadedPhotos = [];
+      for (let index = 0; index < landPhotos.length; index++) {
+        setLocationStatus(`Uploading land photo ${index + 1} of ${landPhotos.length}...`);
+        const farmFolder = String(form.get("farmName") || "unassigned").replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+        uploadedPhotos.push(await uploadLandPhoto(landPhotos[index], farmFolder));
+      }
       const response = await fetch("/api/farms", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -133,6 +148,7 @@ export function FarmsGISScreen() {
           declaredPoints,
           allocatedPoints,
           gpsPoint,
+          photos: uploadedPhotos,
         }),
       });
       const data = await response.json();
@@ -143,6 +159,7 @@ export function FarmsGISScreen() {
       setAllocatedPoints([]);
       setGpsPoint(null);
       setLocationStatus("");
+      setLandPhotos([]);
       await reloadFarms();
       setModal({ open: true, variant: "success", title: "Farm registered", message: `${data.farm.farm_code} was saved with its captured boundary.` });
       setFarms((prev) => [...prev, data.farm]);
@@ -224,6 +241,67 @@ export function FarmsGISScreen() {
     }
   }
 
+  function addLandPhotos(files: FileList | null) {
+    if (!files) return;
+    const additions = Array.from(files)
+      .filter((file) => file.type.startsWith("image/"))
+      .slice(0, Math.max(0, 20 - landPhotos.length))
+      .map((file) => ({
+        file,
+        previewUrl: URL.createObjectURL(file),
+        caption: "",
+        category: "land_overview" as const,
+      }));
+    setLandPhotos((current) => [...current, ...additions]);
+  }
+
+  function removeLandPhoto(index: number) {
+    setLandPhotos((current) => {
+      URL.revokeObjectURL(current[index]?.previewUrl);
+      return current.filter((_, photoIndex) => photoIndex !== index);
+    });
+  }
+
+  function updateLandPhoto(index: number, field: "caption" | "category", value: string) {
+    setLandPhotos((current) => current.map((photo, photoIndex) => photoIndex === index
+      ? { ...photo, [field]: field === "category" ? value as FarmPhotoUpload["category"] : value }
+      : photo));
+  }
+
+  async function uploadLandPhoto(photo: FarmPhotoUpload, farmCode: string) {
+    const signatureResponse = await fetch("/api/media/upload-signature", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ folder: `gocofa/farms/${farmCode}/land` }),
+    });
+    const signature = await signatureResponse.json();
+    if (!signatureResponse.ok) throw new Error(signature.error || "Unable to prepare land photo upload");
+
+    const uploadData = new FormData();
+    uploadData.append("file", photo.file);
+    uploadData.append("timestamp", String(signature.timestamp));
+    uploadData.append("folder", `gocofa/farms/${farmCode}/land`);
+    uploadData.append("api_key", signature.apiKey);
+    uploadData.append("signature", signature.signature);
+
+    const uploadResponse = await fetch(`https://api.cloudinary.com/v1_1/${signature.cloudName}/image/upload`, {
+      method: "POST",
+      body: uploadData,
+    });
+    const uploaded = await uploadResponse.json();
+    if (!uploadResponse.ok) throw new Error(uploaded.error?.message || "Unable to upload land photo");
+
+    return {
+      photoUrl: uploaded.secure_url as string,
+      publicId: uploaded.public_id as string,
+      caption: photo.caption,
+      category: photo.category,
+      fileName: photo.file.name,
+      mimeType: photo.file.type,
+      fileSize: photo.file.size,
+    };
+  }
+
   const lastDeclaredPoint = declaredPoints[declaredPoints.length - 1];
   const lastAllocatedPoint = allocatedPoints[allocatedPoints.length - 1];
 
@@ -288,6 +366,42 @@ export function FarmsGISScreen() {
               <div className="rounded-xl bg-slate-50 px-3 py-2.5"><p className="text-xs text-slate-400">Cocoa polygon</p><strong className="text-sm text-slate-800">{allocatedPoints.length} points</strong></div>
               <div className="rounded-xl bg-slate-50 px-3 py-2.5"><p className="text-xs text-slate-400">Exact GPS</p><strong className="text-sm text-slate-800">{gpsPoint ? `${gpsPoint.latitude.toFixed(6)}, ${gpsPoint.longitude.toFixed(6)}` : "Not captured"}</strong></div>
             </div>
+          </div>
+
+          <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-sm font-bold text-slate-800">Land & production photos</p>
+                <p className="mt-1 text-xs text-slate-500">Upload multiple photos showing the farmer&apos;s land and production area. Maximum 20 photos.</p>
+              </div>
+              <label className="inline-flex h-10 cursor-pointer items-center justify-center rounded-xl border border-emerald-200 bg-white px-4 text-xs font-bold text-emerald-700">
+                Choose photos
+                <input type="file" accept="image/*" multiple className="hidden" onChange={(event) => addLandPhotos(event.target.files)} />
+              </label>
+            </div>
+
+            {landPhotos.length > 0 && (
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {landPhotos.map((photo, index) => (
+                  <div key={`${photo.file.name}-${index}`} className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                    <div className="relative h-36 bg-slate-100">
+                      <Image src={photo.previewUrl} alt={photo.caption || `Land photo ${index + 1}`} fill unoptimized className="object-cover" />
+                      <button type="button" onClick={() => removeLandPhoto(index)} className="absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-full bg-white/95 text-sm font-bold text-slate-700 shadow" aria-label="Remove photo">×</button>
+                    </div>
+                    <div className="grid gap-2 p-3">
+                      <select value={photo.category} onChange={(event) => updateLandPhoto(index, "category", event.target.value)} className="h-9 rounded-lg border border-slate-200 px-2 text-xs text-slate-700">
+                        <option value="land_overview">Land overview</option>
+                        <option value="production_area">Production area</option>
+                        <option value="cocoa_trees">Cocoa trees</option>
+                        <option value="harvest">Harvest</option>
+                        <option value="other">Other</option>
+                      </select>
+                      <input value={photo.caption} onChange={(event) => updateLandPhoto(index, "caption", event.target.value)} placeholder="Photo caption" className="h-9 rounded-lg border border-slate-200 px-2 text-xs text-slate-700 outline-none" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="mt-4 flex justify-end gap-2">

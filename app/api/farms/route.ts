@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
       declaredPoints: Array.isArray(body.declaredPoints) ? body.declaredPoints : [],
       allocatedPoints: Array.isArray(body.allocatedPoints) ? body.allocatedPoints : [],
       gpsPoint: body.gpsPoint || undefined,
+      photos: Array.isArray(body.photos) ? body.photos : [],
     });
 
     return Response.json({ farm }, { status: 201 });

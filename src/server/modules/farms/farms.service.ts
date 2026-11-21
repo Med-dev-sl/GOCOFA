@@ -14,6 +14,7 @@ export interface CreateFarmInput {
   declaredPoints?: Array<{ latitude: number; longitude: number; accuracy?: number }>;
   allocatedPoints?: Array<{ latitude: number; longitude: number; accuracy?: number }>;
   gpsPoint?: { latitude: number; longitude: number; accuracy?: number };
+  photos?: Array<{ photoUrl: string; publicId?: string; caption?: string; category?: string; fileName?: string; mimeType?: string; fileSize?: number }>;
 }
 
 function generateFarmCode() {
@@ -109,6 +110,16 @@ export async function createFarm(input: CreateFarmInput) {
     const allocatedGeojson = { type: "Polygon", coordinates: [[...input.allocatedPoints.map((point) => [point.longitude, point.latitude]), [input.allocatedPoints[0].longitude, input.allocatedPoints[0].latitude]]] };
     await sql`INSERT INTO farm_boundaries (farm_id, geojson, area_hectares, capture_method, captured_by)
       VALUES (${farm.id}, ${JSON.stringify(allocatedGeojson)}::jsonb, ${allocatedCalculatedArea}, 'allocated_cocoa_gps_walk', ${input.createdBy || null})`;
+  }
+
+  for (const photo of input.photos || []) {
+    await sql`INSERT INTO farm_photos (
+      farm_id, photo_url, public_id, caption, photo_category,
+      file_name, mime_type, file_size, uploaded_by
+    ) VALUES (
+      ${farm.id}, ${photo.photoUrl}, ${photo.publicId || null}, ${photo.caption || null}, ${photo.category || "land_production"},
+      ${photo.fileName || null}, ${photo.mimeType || null}, ${photo.fileSize || null}, ${input.createdBy || null}
+    )`;
   }
 
   return farm;
