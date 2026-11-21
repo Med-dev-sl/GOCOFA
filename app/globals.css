@@ -917,3 +917,131 @@ body {
 .overview-status-list div {
   background: #fbfcfb;
 }
+
+.status-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  width: 100vw;
+  height: 100svh;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.38);
+  backdrop-filter: blur(6px);
+  animation: status-fade 160ms ease-out;
+}
+
+.status-modal {
+  position: relative;
+  width: min(23rem, calc(100vw - 2rem));
+  max-height: calc(100svh - 2rem);
+  overflow: hidden;
+  border: 1px solid rgba(11, 107, 53, 0.12);
+  border-radius: 1.25rem;
+  padding: 1.25rem;
+  background: #fff;
+  box-shadow: 0 1.25rem 3.5rem rgba(15, 23, 42, 0.22);
+  text-align: center;
+  transform: none;
+  animation: status-enter 200ms cubic-bezier(.2,.8,.2,1);
+}
+
+.status-modal--warning {
+  width: min(21rem, calc(100vw - 2rem));
+  max-width: 21rem;
+  min-width: 0;
+}
+
+.status-modal--warning .status-modal__logo {
+  width: 3.25rem;
+  height: 3.25rem;
+  margin: 0 auto 0.65rem;
+}
+
+.status-modal--warning .status-modal__logo img {
+  width: 3.25rem;
+  height: 3.25rem;
+  object-fit: contain;
+}
+
+.status-modal__logo {
+  position: relative;
+  width: 3.25rem;
+  height: 3.25rem;
+  margin: 0 auto 0.75rem;
+}
+
+.status-modal__logo img { object-fit: contain; }
+
+.status-modal__icon {
+  width: 3.25rem;
+  height: 3.25rem;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 0.65rem;
+  border-radius: 50%;
+  font-size: 1.35rem;
+  font-weight: 900;
+}
+
+.status-modal h2 {
+  margin: 0;
+  color: #153426;
+  font-size: 1.1rem;
+}
+
+.status-modal p {
+  margin: 0.45rem 0 1rem;
+  color: #718179;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.status-modal__close {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.65rem;
+  z-index: 2;
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  border-radius: 50%;
+  background: #f1f5f2;
+  color: #71827a;
+}
+
+.status-modal__actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.status-modal__action,
+.status-modal__cancel {
+  height: 2.75rem;
+  border-radius: 0.7rem;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.status-modal__action {
+  border: 0;
+  background: var(--gocofa-green);
+  color: #fff;
+}
+
+.status-modal__cancel {
+  border: 1px solid #dce5df;
+  background: #fff;
+  color: #52665d;
+}
+
+.status-modal--warning .status-modal__icon { background: #fff4d9; color: #9a7429; }
+.status-modal--warning .status-modal__action { background: #a43e34; }
+.status-modal--success .status-modal__icon { background: #e7f5eb; color: #08743a; }
+.status-modal--error .status-modal__icon { background: #fff0ee; color: #b53a32; }
+
+@media (max-width: 480px) {
+  .status-modal__actions { grid-template-columns: 1fr; }
+}

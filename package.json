@@ -10,7 +10,8 @@
     "db:migrate": "tsx src/server/scripts/migrate.ts",
     "db:seed-admin": "tsx src/server/scripts/seed-admin.ts",
     "db:migrate-farmers": "tsx src/server/scripts/migrate-farmers.ts",
-    "db:seed-eastern-province": "tsx src/server/scripts/seed-eastern-province.ts"
+    "db:seed-eastern-province": "tsx src/server/scripts/seed-eastern-province.ts",
+    "db:migrate-farms-gis": "tsx src/server/scripts/migrate-farms-gis.ts"
   },
   "dependencies": {
     "@heroui/react": "^3.2.7",

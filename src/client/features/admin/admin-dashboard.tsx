@@ -5,6 +5,7 @@ import { AdminSidebar, SidebarNavItem } from "@/src/client/components/sidebar/ad
 import { StatusModal } from "@/src/client/components/modal/status-modal";
 import { OverviewScreen } from "@/src/client/features/overview/overview-screen";
 import { FarmersScreen } from "@/src/client/features/farmers/farmers-screen";
+import { FarmsGISScreen } from "@/src/client/features/farms/farms-gis-screen";
 
 interface AdminDashboardProps {
   fullName: string;
@@ -15,7 +16,6 @@ interface AdminDashboardProps {
 
 const navigation: SidebarNavItem[] = [
   { label: "Overview", icon: "grid" },
-  { label: "Farmers", icon: "users" },
 ];
 
 export function AdminDashboard({ fullName, username, role, onLogout }: AdminDashboardProps) {
@@ -46,7 +46,6 @@ export function AdminDashboard({ fullName, username, role, onLogout }: AdminDash
       <section className="admin-content">
         <header className="admin-header">
           <div>
-            <p>GOCOFA control center</p>
             <h1>{activeItem}</h1>
           </div>
           <div className="admin-header__actions">
@@ -69,6 +68,8 @@ export function AdminDashboard({ fullName, username, role, onLogout }: AdminDash
           <OverviewScreen fullName={fullName} />
         ) : activeItem === "Farmers" ? (
           <FarmersScreen />
+        ) : activeItem === "Farms & GIS" ? (
+          <FarmsGISScreen />
         ) : (
           <div className="module-placeholder">
             <p>GOCOFA module</p>

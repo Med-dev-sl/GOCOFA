@@ -60,9 +60,9 @@ export function StatusModal({
       >
         <button className="status-modal__close" type="button" onClick={onClose} aria-label="Close">×</button>
         <div className="status-modal__logo">
-          <Image src="/logo/logo.png" alt="GOCOFA" fill sizes="64px" />
+          <Image src="/logo/logo.png" alt="GOCOFA" width={52} height={52} priority />
         </div>
-        <div className="status-modal__icon" aria-hidden="true">{symbol}</div>
+        {variant !== "warning" && <div className="status-modal__icon" aria-hidden="true">{symbol}</div>}
         <h2 id="status-modal-title">{title}</h2>
         <p id="status-modal-message">{message}</p>
         <div className="status-modal__actions">

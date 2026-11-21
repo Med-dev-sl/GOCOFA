@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { MapContainer, Marker, TileLayer, Circle, useMap } from "react-leaflet";
+import { MapContainer, Marker, TileLayer, Circle, Polygon, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -11,6 +11,7 @@ interface OpenStreetMapProps {
   accuracy?: number;
   height?: string;
   interactive?: boolean;
+  points?: Array<{ latitude: number; longitude: number }>;
 }
 
 const markerIcon = L.divIcon({
@@ -36,6 +37,7 @@ export function OpenStreetMap({
   accuracy,
   height = "260px",
   interactive = true,
+  points,
 }: OpenStreetMapProps) {
   const hasPosition = typeof latitude === "number" && typeof longitude === "number";
   const center: [number, number] = hasPosition ? [latitude, longitude] : [8.4657, -13.2317];
@@ -64,6 +66,12 @@ export function OpenStreetMap({
                 center={[latitude, longitude]}
                 radius={accuracy}
                 pathOptions={{ color: "#0b6b35", fillColor: "#a6c90f", fillOpacity: 0.14, weight: 1 }}
+              />
+            )}
+            {points && points.length > 0 && (
+              <Polygon
+                positions={points.map((point) => [point.latitude, point.longitude])}
+                pathOptions={{ color: "#ff7800", weight: 1 }}
               />
             )}
           </>

@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Search, UserPlus, X } from "lucide-react";
 import dynamic from "next/dynamic";
+import Image from "next/image";
 import { StatusModal, StatusModalVariant } from "@/src/client/components/modal/status-modal";
 
 const OpenStreetMap = dynamic(
@@ -21,6 +22,7 @@ interface Farmer {
   district_name: string | null;
   cooperative_name: string | null;
   primary_phone: string | null;
+  photo_url: string | null;
   created_at: string;
 }
 
@@ -444,10 +446,20 @@ export function FarmersScreen() {
                   <tr key={farmer.id} className="transition hover:bg-slate-50/70">
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
-                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-emerald-50 text-xs font-bold text-emerald-700">
-                          {farmer.first_name.charAt(0)}
-                          {farmer.last_name.charAt(0)}
-                        </span>
+                        {farmer.photo_url ? (
+                          <Image
+                            src={farmer.photo_url}
+                            alt={`${farmer.first_name} ${farmer.last_name}`}
+                            width={40}
+                            height={40}
+                            unoptimized
+                            className="h-10 w-10 shrink-0 rounded-full object-cover ring-2 ring-emerald-50"
+                          />
+                        ) : (
+                          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-emerald-50 text-xs font-bold text-emerald-700">
+                            {farmer.first_name.charAt(0)}{farmer.last_name.charAt(0)}
+                          </span>
+                        )}
                         <div>
                           <p className="text-sm font-semibold text-slate-800">
                             {farmer.first_name} {farmer.middle_name ? `${farmer.middle_name} ` : ""}
