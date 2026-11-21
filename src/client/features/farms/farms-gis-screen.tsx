@@ -4,6 +4,9 @@ import dynamic from "next/dynamic";
 import { FormEvent, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { StatusModal, StatusModalVariant } from "@/src/client/components/modal/status-modal";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Download, FileSpreadsheet, Search, Upload } from "lucide-react";
+import { exportRowsToExcel, exportRowsToPdf, parseExcelFile } from "@/src/client/lib/export-utils";
 
 const OpenStreetMap = dynamic(
   () => import("@/src/client/components/map/openstreet-map").then((module) => module.OpenStreetMap),
@@ -27,6 +30,8 @@ interface Farm {
   first_name: string;
   last_name: string;
   farmer_code: string;
+  allocated_cocoa_area: number | null;
+  created_at: string;
 }
 
 export function FarmsGISScreen() {
@@ -35,8 +40,15 @@ export function FarmsGISScreen() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showForm, setShowForm] = useState(false);
-  const [coordinates, setCoordinates] = useState<Array<{ latitude: number; longitude: number; accuracy?: number }>>([]);
+  const [declaredPoints, setDeclaredPoints] = useState<Array<{ latitude: number; longitude: number; accuracy?: number }>>([]);
+  const [allocatedPoints, setAllocatedPoints] = useState<Array<{ latitude: number; longitude: number; accuracy?: number }>>([]);
+  const [gpsPoint, setGpsPoint] = useState<{ latitude: number; longitude: number; accuracy?: number } | null>(null);
+  const [captureMode, setCaptureMode] = useState<"declared" | "allocated" | "gps">("declared");
   const [locationStatus, setLocationStatus] = useState("");
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("newest");
+  const [importing, setImporting] = useState(false);
   const [modal, setModal] = useState<{ open: boolean; variant: StatusModalVariant; title: string; message: string }>({ open: false, variant: "info", title: "", message: "" });
 
   useEffect(() => {
@@ -78,12 +90,21 @@ export function FarmsGISScreen() {
     setLocationStatus("Capturing boundary point...");
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setCoordinates((points) => [...points, {
+        const newPoint = {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
           accuracy: position.coords.accuracy,
-        }]);
-        setLocationStatus(`${coordinates.length + 1} boundary point(s) captured.`);
+        };
+        if (captureMode === "declared") {
+          setDeclaredPoints((points) => [...points, newPoint]);
+          setLocationStatus(`${declaredPoints.length + 1} declared point(s) captured.`);
+        } else if (captureMode === "allocated") {
+          setAllocatedPoints((points) => [...points, newPoint]);
+          setLocationStatus(`${allocatedPoints.length + 1} allocated point(s) captured.`);
+        } else {
+          setGpsPoint(newPoint);
+          setLocationStatus("GPS point captured.");
+        }
       },
       () => setLocationStatus("Location permission was denied or unavailable."),
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 1000 },
@@ -109,16 +130,22 @@ export function FarmsGISScreen() {
           cropType: form.get("cropType"),
           variety: form.get("variety"),
           productionEstimate: form.get("productionEstimate"),
-          points: coordinates,
+          declaredPoints,
+          allocatedPoints,
+          gpsPoint,
         }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Unable to create farm");
 
       setShowForm(false);
-      setCoordinates([]);
+      setDeclaredPoints([]);
+      setAllocatedPoints([]);
+      setGpsPoint(null);
       setLocationStatus("");
+      await reloadFarms();
       setModal({ open: true, variant: "success", title: "Farm registered", message: `${data.farm.farm_code} was saved with its captured boundary.` });
+      setFarms((prev) => [...prev, data.farm]);
     } catch (error) {
       setModal({ open: true, variant: "error", title: "Farm not saved", message: error instanceof Error ? error.message : "Unable to create farm." });
     } finally {
@@ -126,7 +153,79 @@ export function FarmsGISScreen() {
     }
   }
 
-  const lastPoint = coordinates[coordinates.length - 1];
+  async function reloadFarms() {
+    const response = await fetch("/api/farms");
+    const data = await response.json();
+    if (response.ok) setFarms(data.farms || []);
+  }
+
+  const filteredFarms = farms
+    .filter((farm) => {
+      const text = `${farm.farm_code} ${farm.farm_name || ""} ${farm.first_name} ${farm.last_name}`.toLowerCase();
+      return text.includes(search.toLowerCase()) && (statusFilter === "all" || farm.status === statusFilter);
+    })
+    .sort((a, b) => {
+      if (sortBy === "name") return (a.farm_name || a.farm_code).localeCompare(b.farm_name || b.farm_code);
+      if (sortBy === "area") return Number(b.declared_area || b.calculated_area || 0) - Number(a.declared_area || a.calculated_area || 0);
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+
+  const declaredArea = farms.reduce((total, farm) => total + Number(farm.declared_area || farm.calculated_area || 0), 0);
+  const gpsArea = farms.reduce((total, farm) => total + Number(farm.calculated_area || 0), 0);
+  const cocoaArea = farms.reduce((total, farm) => total + Number(farm.allocated_cocoa_area || 0), 0);
+  const areaChart = [
+    { name: "Declared", area: Number(declaredArea.toFixed(2)) },
+    { name: "GPS", area: Number(gpsArea.toFixed(2)) },
+    { name: "Cocoa", area: Number(cocoaArea.toFixed(2)) },
+  ];
+
+  const exportColumns = [
+    { header: "Farm Code", key: "farm_code" },
+    { header: "Farm Name", key: "farm_name" },
+    { header: "Farmer", key: "first_name" },
+    { header: "Farmer ID", key: "farmer_code" },
+    { header: "Declared Area (ha)", key: "declared_area" },
+    { header: "GPS Area (ha)", key: "calculated_area" },
+    { header: "Allocated Cocoa (ha)", key: "allocated_cocoa_area" },
+    { header: "Status", key: "status" },
+  ];
+
+  async function handleImport(file: File | undefined) {
+    if (!file) return;
+    setImporting(true);
+    try {
+      const rows = await parseExcelFile(file);
+      let imported = 0;
+      let skipped = 0;
+      for (const row of rows) {
+        const farmerCode = String(row["Farmer ID"] || row.farmer_code || "").trim();
+        const farmer = farmers.find((option) => option.farmer_code === farmerCode);
+        if (!farmer) { skipped++; continue; }
+        const response = await fetch("/api/farms", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            farmerId: farmer.id,
+            farmName: row["Farm Name"] || row.farm_name,
+            declaredArea: row["Declared Area (ha)"] || row.declared_area,
+            allocatedCocoaArea: row["Allocated Cocoa (ha)"] || row.allocated_cocoa_area,
+            cropType: "cocoa",
+            declaredPoints: [], allocatedPoints: [], gpsPoint: undefined,
+          }),
+        });
+        if (response.ok) imported++; else skipped++;
+      }
+      await reloadFarms();
+      setModal({ open: true, variant: imported ? "success" : "warning", title: "Excel import complete", message: `${imported} farm(s) imported; ${skipped} skipped.` });
+    } catch (importError) {
+      setModal({ open: true, variant: "error", title: "Import failed", message: importError instanceof Error ? importError.message : "Unable to import Excel file." });
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  const lastDeclaredPoint = declaredPoints[declaredPoints.length - 1];
+  const lastAllocatedPoint = allocatedPoints[allocatedPoints.length - 1];
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-5">
@@ -156,29 +255,176 @@ export function FarmsGISScreen() {
           </div>
 
           <div className="mt-5 overflow-hidden rounded-2xl border border-emerald-100 bg-white">
-            <div className="flex items-center justify-between gap-3 border-b border-emerald-100 px-4 py-3">
-              <div><p className="text-sm font-bold text-slate-800">Farm boundary</p><p className="mt-1 text-xs text-slate-500">{locationStatus || `${coordinates.length} boundary point(s) captured`}</p></div>
-              <button type="button" onClick={capturePoint} className="h-10 rounded-xl border border-emerald-200 bg-emerald-50 px-4 text-sm font-bold text-emerald-700">Capture point</button>
+            <div className="flex flex-col gap-3 border-b border-emerald-100 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-bold text-slate-800">Farm map & boundaries</p>
+                <p className="mt-1 text-xs text-slate-500">{locationStatus || "Capture declared land, cocoa allocation, and exact field location."}</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {(["declared", "allocated", "gps"] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => setCaptureMode(mode)}
+                    className={`h-9 rounded-xl px-3 text-xs font-bold ${captureMode === mode ? "bg-emerald-700 text-white" : "border border-slate-200 bg-white text-slate-600"}`}
+                  >
+                    {mode === "declared" ? "Declared land" : mode === "allocated" ? "Cocoa area" : "Exact GPS"}
+                  </button>
+                ))}
+                <button type="button" onClick={capturePoint} className="h-9 rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-xs font-bold text-emerald-700">Capture point</button>
+              </div>
             </div>
-            <OpenStreetMap latitude={lastPoint?.latitude} longitude={lastPoint?.longitude} accuracy={lastPoint?.accuracy} points={coordinates} height="320px" />
+
+            <OpenStreetMap
+              latitude={gpsPoint?.latitude || lastDeclaredPoint?.latitude || lastAllocatedPoint?.latitude}
+              longitude={gpsPoint?.longitude || lastDeclaredPoint?.longitude || lastAllocatedPoint?.longitude}
+              accuracy={gpsPoint?.accuracy || lastDeclaredPoint?.accuracy || lastAllocatedPoint?.accuracy}
+              points={captureMode === "declared" ? declaredPoints : captureMode === "allocated" ? allocatedPoints : gpsPoint ? [gpsPoint] : []}
+              height="320px"
+            />
+
+            <div className="grid gap-3 border-t border-emerald-100 p-4 sm:grid-cols-3">
+              <div className="rounded-xl bg-slate-50 px-3 py-2.5"><p className="text-xs text-slate-400">Declared polygon</p><strong className="text-sm text-slate-800">{declaredPoints.length} points</strong></div>
+              <div className="rounded-xl bg-slate-50 px-3 py-2.5"><p className="text-xs text-slate-400">Cocoa polygon</p><strong className="text-sm text-slate-800">{allocatedPoints.length} points</strong></div>
+              <div className="rounded-xl bg-slate-50 px-3 py-2.5"><p className="text-xs text-slate-400">Exact GPS</p><strong className="text-sm text-slate-800">{gpsPoint ? `${gpsPoint.latitude.toFixed(6)}, ${gpsPoint.longitude.toFixed(6)}` : "Not captured"}</strong></div>
+            </div>
           </div>
 
           <div className="mt-4 flex justify-end gap-2">
-            <button type="button" onClick={() => { setShowForm(false); setCoordinates([]); }} className="h-10 rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-600">Cancel</button>
-            <button type="submit" disabled={submitting || coordinates.length < 3} className="h-10 rounded-xl bg-emerald-700 px-4 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50">{submitting ? "Saving..." : "Save farm"}</button>
+            <button type="button" onClick={() => { setShowForm(false); setDeclaredPoints([]); setAllocatedPoints([]); setGpsPoint(null); }} className="h-10 rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-600">Cancel</button>
+            <button type="submit" disabled={submitting || declaredPoints.length < 3 || allocatedPoints.length < 3 || !gpsPoint} className="h-10 rounded-xl bg-emerald-700 px-4 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50">{submitting ? "Saving..." : "Save farm"}</button>
           </div>
         </form>
       )}
 
+      <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="grid gap-3 xl:grid-cols-[1fr_340px]">
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-4">
+          <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-400">Area analytics</p>
+          <p className="mt-1 text-sm font-bold text-slate-800">Declared vs GPS vs cocoa area (ha)</p>
+          <div className="mt-3 h-44">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={areaChart} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
+                <CartesianGrid stroke="#eef2f0" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                <Tooltip cursor={{ fill: "#f0fdf4" }} />
+                <Bar dataKey="area" fill="#08783a" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+          {[
+            ['Total farms', farms.length, 'landscape'],
+            ['Declared area', `${declaredArea.toFixed(2)} ha`, 'polyline'],
+            ['GPS area', `${gpsArea.toFixed(2)} ha`, 'my_location'],
+            ['Cocoa area', `${cocoaArea.toFixed(2)} ha`, 'eco']
+          ].map(([label, value, icon]) => (
+            <motion.div key={String(label)} initial={{ scale: .96, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="rounded-2xl border border-slate-200/80 bg-white p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-bold uppercase text-slate-400">{label}</p>
+                <span className="material-symbols-outlined text-lg text-emerald-700">{icon}</span>
+              </div>
+              <p className="mt-3 text-xl font-bold text-slate-900">{value}</p>
+            </motion.div>
+          ))}
+        </div>
+      </motion.section>
+
+      <section className="flex flex-wrap items-end gap-2 rounded-2xl border border-slate-200/80 bg-white p-3">
+        <label className="grid min-w-48 flex-1 gap-1 text-[11px] font-bold uppercase text-slate-400">Search
+          <span className="flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3">
+            <Search className="h-4 w-4 text-slate-400" />
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Farm or farmer"
+              className="min-w-0 flex-1 bg-transparent text-sm normal-case text-slate-700 outline-none"
+            />
+          </span>
+        </label>
+        <label className="grid gap-1 text-[11px] font-bold uppercase text-slate-400">Status
+          <select
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
+            className="h-10 rounded-xl border border-slate-200 px-3 text-sm normal-case text-slate-700"
+          >
+            <option value="all">All statuses</option>
+            <option value="draft">Draft</option>
+            <option value="verified">Verified</option>
+            <option value="active">Active</option>
+          </select>
+        </label>
+        <label className="grid gap-1 text-[11px] font-bold uppercase text-slate-400">Sort
+          <select
+            value={sortBy}
+            onChange={(event) => setSortBy(event.target.value)}
+            className="h-10 rounded-xl border border-slate-200 px-3 text-sm normal-case text-slate-700"
+          >
+            <option value="newest">Newest</option>
+            <option value="name">Name</option>
+            <option value="area">Area</option>
+          </select>
+        </label>
+        <button
+          type="button"
+          onClick={() => exportRowsToExcel(filteredFarms as unknown as Record<string, unknown>[], exportColumns, "gocofa-farms-gis")}
+          className="inline-flex h-10 items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-xs font-bold text-emerald-700"
+        >
+          <FileSpreadsheet className="h-4 w-4" />Excel
+        </button>
+        <button
+          type="button"
+          onClick={() => exportRowsToPdf(filteredFarms as unknown as Record<string, unknown>[], exportColumns, "gocofa-farms-gis-report", "Farms & GIS Registry Report")}
+          className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 px-3 text-xs font-bold text-slate-700"
+        >
+          <Download className="h-4 w-4" />PDF
+        </button>
+        <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl bg-slate-900 px-3 text-xs font-bold text-white">
+          <Upload className="h-4 w-4" />{importing ? "Importing..." : "Import Excel"}
+          <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={(event) => void handleImport(event.target.files?.[0])} />
+        </label>
+      </section>
+
       <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_8px_30px_rgba(15,23,42,.04)]">
-        <div className="border-b border-slate-100 px-5 py-4"><p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-400">Farm registry</p><p className="mt-1 text-sm font-bold text-slate-800">{farms.length.toLocaleString()} registered farms</p></div>
-        {loading ? <div className="grid min-h-56 place-items-center text-sm text-slate-400">Loading farms...</div> : (
+        <div className="border-b border-slate-100 px-5 py-4">
+          <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-400">Farm registry</p>
+          <p className="mt-1 text-sm font-bold text-slate-800">{farms.length.toLocaleString()} registered farms</p>
+        </div>
+        {loading ? (
+          <div className="grid min-h-56 place-items-center text-sm text-slate-400">Loading farms...</div>
+        ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left">
-              <thead className="bg-slate-50/80 text-xs uppercase tracking-[0.08em] text-slate-400"><tr><th className="px-5 py-3">Farm</th><th className="px-5 py-3">Farmer</th><th className="px-5 py-3">Declared area</th><th className="px-5 py-3">GPS area</th><th className="px-5 py-3">Status</th></tr></thead>
+              <thead className="bg-slate-50/80 text-xs uppercase tracking-[0.08em] text-slate-400">
+                <tr>
+                  <th className="px-5 py-3">Farm</th>
+                  <th className="px-5 py-3">Farmer</th>
+                  <th className="px-5 py-3">Declared area</th>
+                  <th className="px-5 py-3">GPS area</th>
+                  <th className="px-5 py-3">Status</th>
+                </tr>
+              </thead>
               <tbody className="divide-y divide-slate-100">
-                {farms.map((farm) => <tr key={farm.id} className="hover:bg-slate-50/70"><td className="px-5 py-4"><p className="text-sm font-semibold text-slate-800">{farm.farm_name || farm.farm_code}</p><p className="text-xs text-slate-400">{farm.farm_code}</p></td><td className="px-5 py-4 text-sm text-slate-600">{farm.first_name} {farm.last_name}</td><td className="px-5 py-4 text-sm text-slate-600">{farm.declared_area ?? "—"} ha</td><td className="px-5 py-4 text-sm text-slate-600">{farm.calculated_area ?? "—"} ha</td><td className="px-5 py-4"><span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold capitalize text-emerald-700">{farm.status}</span></td></tr>)}
-                {!farms.length && <tr><td colSpan={5} className="px-5 py-12 text-center text-sm text-slate-400">No farms registered</td></tr>}
+                {filteredFarms.map((farm) => (
+                  <tr key={farm.id} className="hover:bg-slate-50/70">
+                    <td className="px-5 py-4">
+                      <p className="text-sm font-semibold text-slate-800">{farm.farm_name || farm.farm_code}</p>
+                      <p className="text-xs text-slate-400">{farm.farm_code}</p>
+                    </td>
+                    <td className="px-5 py-4 text-sm text-slate-600">{farm.first_name} {farm.last_name}</td>
+                    <td className="px-5 py-4 text-sm text-slate-600">{farm.declared_area ?? "—"} ha</td>
+                    <td className="px-5 py-4 text-sm text-slate-600">{farm.calculated_area ?? "—"} ha</td>
+                    <td className="px-5 py-4">
+                      <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold capitalize text-emerald-700">{farm.status}</span>
+                    </td>
+                  </tr>
+                ))}
+                {!farms.length && (
+                  <tr>
+                    <td colSpan={5} className="px-5 py-12 text-center text-sm text-slate-400">No farms registered</td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     const farmers = await sql`
       SELECT id, farmer_code, first_name, middle_name, last_name, status
       FROM farmers
-      WHERE is_active = TRUE
+      WHERE status IN ('active', 'verified', 'draft', 'pending')
       ORDER BY first_name, last_name
     `;
     return Response.json({ farmers });

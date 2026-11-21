@@ -35,7 +35,9 @@ export async function POST(request: NextRequest) {
       variety: body.variety,
       productionEstimate: body.productionEstimate ? Number(body.productionEstimate) : undefined,
       createdBy: session.userId,
-      points: Array.isArray(body.points) ? body.points : [],
+      declaredPoints: Array.isArray(body.declaredPoints) ? body.declaredPoints : [],
+      allocatedPoints: Array.isArray(body.allocatedPoints) ? body.allocatedPoints : [],
+      gpsPoint: body.gpsPoint || undefined,
     });
 
     return Response.json({ farm }, { status: 201 });

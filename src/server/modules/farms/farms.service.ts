@@ -11,7 +11,9 @@ export interface CreateFarmInput {
   variety?: string;
   productionEstimate?: number;
   createdBy?: string;
-  points?: Array<{ latitude: number; longitude: number; accuracy?: number }>;
+  declaredPoints?: Array<{ latitude: number; longitude: number; accuracy?: number }>;
+  allocatedPoints?: Array<{ latitude: number; longitude: number; accuracy?: number }>;
+  gpsPoint?: { latitude: number; longitude: number; accuracy?: number };
 }
 
 function generateFarmCode() {
@@ -59,8 +61,11 @@ export async function listFarms(limit = 50, offset = 0) {
 export async function createFarm(input: CreateFarmInput) {
   const sql = getDatabase();
   const farmCode = generateFarmCode();
-  const calculatedArea = input.points && input.points.length >= 3
-    ? calculatePolygonArea(input.points)
+  const declaredCalculatedArea = input.declaredPoints && input.declaredPoints.length >= 3
+    ? calculatePolygonArea(input.declaredPoints)
+    : null;
+  const allocatedCalculatedArea = input.allocatedPoints && input.allocatedPoints.length >= 3
+    ? calculatePolygonArea(input.allocatedPoints)
     : null;
 
   const farms = await sql`
@@ -69,8 +74,8 @@ export async function createFarm(input: CreateFarmInput) {
       allocated_cocoa_area, ownership_type, farm_age, crop_type, variety,
       production_estimate, status, created_by
     ) VALUES (
-      ${farmCode}, ${input.farmerId}, ${input.farmName || null}, ${input.declaredArea || null},
-      ${calculatedArea}, ${input.allocatedCocoaArea || null}, ${input.ownershipType || null},
+      ${farmCode}, ${input.farmerId}, ${input.farmName || null}, ${input.declaredArea || declaredCalculatedArea},
+      ${declaredCalculatedArea}, ${input.allocatedCocoaArea || allocatedCalculatedArea}, ${input.ownershipType || null},
       ${input.farmAge || null}, ${input.cropType || "cocoa"}, ${input.variety || null},
       ${input.productionEstimate || null}, 'draft', ${input.createdBy || null}
     )
@@ -79,34 +84,31 @@ export async function createFarm(input: CreateFarmInput) {
 
   const farm = farms[0];
 
-  for (const point of input.points || []) {
-    await sql`
-      INSERT INTO farm_locations (
-        farm_id, location_type, latitude, longitude, accuracy_meters,
-        captured_by
-      ) VALUES (
-        ${farm.id}, 'point', ${point.latitude}, ${point.longitude},
-        ${point.accuracy || null}, ${input.createdBy || null}
-      )
-    `;
+  for (const point of input.declaredPoints || []) {
+    await sql`INSERT INTO farm_locations (farm_id, location_type, latitude, longitude, accuracy_meters, captured_by)
+      VALUES (${farm.id}, 'declared_polygon_point', ${point.latitude}, ${point.longitude}, ${point.accuracy || null}, ${input.createdBy || null})`;
   }
 
-  if (input.points && input.points.length >= 3) {
-    const geojson = {
-      type: "Polygon",
-      coordinates: [[
-        ...input.points.map((point) => [point.longitude, point.latitude]),
-        [input.points[0].longitude, input.points[0].latitude],
-      ]],
-    };
+  for (const point of input.allocatedPoints || []) {
+    await sql`INSERT INTO farm_locations (farm_id, location_type, latitude, longitude, accuracy_meters, captured_by)
+      VALUES (${farm.id}, 'allocated_polygon_point', ${point.latitude}, ${point.longitude}, ${point.accuracy || null}, ${input.createdBy || null})`;
+  }
 
-    await sql`
-      INSERT INTO farm_boundaries (
-        farm_id, geojson, area_hectares, capture_method, captured_by
-      ) VALUES (
-        ${farm.id}, ${JSON.stringify(geojson)}::jsonb, ${calculatedArea}, 'gps_walk', ${input.createdBy || null}
-      )
-    `;
+  if (input.gpsPoint) {
+    await sql`INSERT INTO farm_locations (farm_id, location_type, latitude, longitude, accuracy_meters, captured_by)
+      VALUES (${farm.id}, 'exact_gps', ${input.gpsPoint.latitude}, ${input.gpsPoint.longitude}, ${input.gpsPoint.accuracy || null}, ${input.createdBy || null})`;
+  }
+
+  if (input.declaredPoints && input.declaredPoints.length >= 3) {
+    const declaredGeojson = { type: "Polygon", coordinates: [[...input.declaredPoints.map((point) => [point.longitude, point.latitude]), [input.declaredPoints[0].longitude, input.declaredPoints[0].latitude]]] };
+    await sql`INSERT INTO farm_boundaries (farm_id, geojson, area_hectares, capture_method, captured_by)
+      VALUES (${farm.id}, ${JSON.stringify(declaredGeojson)}::jsonb, ${declaredCalculatedArea}, 'declared_gps_walk', ${input.createdBy || null})`;
+  }
+
+  if (input.allocatedPoints && input.allocatedPoints.length >= 3) {
+    const allocatedGeojson = { type: "Polygon", coordinates: [[...input.allocatedPoints.map((point) => [point.longitude, point.latitude]), [input.allocatedPoints[0].longitude, input.allocatedPoints[0].latitude]]] };
+    await sql`INSERT INTO farm_boundaries (farm_id, geojson, area_hectares, capture_method, captured_by)
+      VALUES (${farm.id}, ${JSON.stringify(allocatedGeojson)}::jsonb, ${allocatedCalculatedArea}, 'allocated_cocoa_gps_walk', ${input.createdBy || null})`;
   }
 
   return farm;
