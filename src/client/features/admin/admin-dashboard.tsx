@@ -6,6 +6,7 @@ import { StatusModal } from "@/src/client/components/modal/status-modal";
 import { OverviewScreen } from "@/src/client/features/overview/overview-screen";
 import { FarmersScreen } from "@/src/client/features/farmers/farmers-screen";
 import { FarmsGISScreen } from "@/src/client/features/farms/farms-gis-screen";
+import { FieldOperationsScreen } from "@/src/client/features/field-operations/field-operations-screen";
 
 interface AdminDashboardProps {
   fullName: string;
@@ -70,6 +71,8 @@ export function AdminDashboard({ fullName, username, role, onLogout }: AdminDash
           <FarmersScreen />
         ) : activeItem === "Farms & GIS" ? (
           <FarmsGISScreen />
+        ) : activeItem === "Field Operations" ? (
+          <FieldOperationsScreen />
         ) : (
           <div className="module-placeholder">
             <p>GOCOFA module</p>
