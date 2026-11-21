@@ -39,6 +39,10 @@ export function FarmersScreen() {
   const [locationStatus, setLocationStatus] = useState("");
   const [districtOptions, setDistrictOptions] = useState<Array<{ id: string; name: string; chiefdoms: Array<{ id: string; name: string }> }>>([]);
   const [selectedDistrict, setSelectedDistrict] = useState("");
+  const [cooperatives, setCooperatives] = useState<Array<{ id: string; name: string; code: string | null }>>([]);
+  const [selectedCooperative, setSelectedCooperative] = useState("");
+  const [newCooperativeName, setNewCooperativeName] = useState("");
+  const [creatingCooperative, setCreatingCooperative] = useState(false);
   const [modal, setModal] = useState<{
     open: boolean;
     variant: StatusModalVariant;
@@ -80,6 +84,10 @@ export function FarmersScreen() {
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || "Unable to load farmers");
         setFarmers(data.farmers);
+
+        const cooperativeResponse = await fetch("/api/cooperatives", { signal: controller.signal });
+        const cooperativeData = await cooperativeResponse.json();
+        if (cooperativeResponse.ok) setCooperatives(cooperativeData.cooperatives || []);
       } catch (loadError) {
         if (!controller.signal.aborted) {
           setError(loadError instanceof Error ? loadError.message : "Unable to load farmers");
@@ -131,6 +139,7 @@ export function FarmersScreen() {
           locationAccuracy: coordinates?.accuracy,
           districtId: form.get("districtId") || undefined,
           chiefdomId: form.get("chiefdomId") || undefined,
+          cooperativeId: selectedCooperative || undefined,
           photoUrl,
           identificationPhotoUrl,
         }),
@@ -139,6 +148,8 @@ export function FarmersScreen() {
       if (!response.ok) throw new Error(data.error || "Unable to create farmer");
       setShowForm(false);
       setSelectedDistrict("");
+      setSelectedCooperative("");
+      setNewCooperativeName("");
       setCoordinates(null);
       setLocationStatus("");
       setModal({
@@ -276,6 +287,31 @@ export function FarmersScreen() {
     }
   }
 
+  async function createCooperative() {
+    const name = newCooperativeName.trim();
+    if (!name) return;
+    setCreatingCooperative(true);
+    try {
+      const response = await fetch("/api/cooperatives", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, districtId: selectedDistrict || undefined }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Unable to create cooperative");
+      setCooperatives((current) => data.existing
+        ? current
+        : [...current, data.cooperative].sort((a, b) => a.name.localeCompare(b.name)));
+      setSelectedCooperative(data.cooperative.id);
+      setNewCooperativeName("");
+      setModal({ open: true, variant: data.existing ? "info" : "success", title: data.existing ? "Cooperative found" : "Cooperative added", message: data.existing ? `${data.cooperative.name} was already available and was selected.` : `${data.cooperative.name} was added and selected.` });
+    } catch (createError) {
+      setModal({ open: true, variant: "error", title: "Cooperative not saved", message: createError instanceof Error ? createError.message : "Unable to save cooperative" });
+    } finally {
+      setCreatingCooperative(false);
+    }
+  }
+
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -392,6 +428,19 @@ export function FarmersScreen() {
                 <option value="">Select chiefdom</option>
                 {districtOptions.find((district) => district.id === selectedDistrict)?.chiefdoms.map((chiefdom) => <option key={chiefdom.id} value={chiefdom.id}>{chiefdom.name}</option>)}
               </select>
+            </label>
+            <label className="grid gap-1.5 text-xs font-semibold text-slate-600 sm:col-span-2">
+              Cooperative
+              <select value={selectedCooperative} onChange={(event) => setSelectedCooperative(event.target.value)} className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-emerald-600">
+                <option value="">No cooperative / select cooperative</option>
+                {cooperatives.map((cooperative) => <option key={cooperative.id} value={cooperative.id}>{cooperative.name}{cooperative.code ? ` · ${cooperative.code}` : ""}</option>)}
+              </select>
+              <span className="mt-1 flex flex-col gap-2 sm:flex-row">
+                <input value={newCooperativeName} onChange={(event) => setNewCooperativeName(event.target.value)} placeholder="Cooperative name not in the list" className="h-10 min-w-0 flex-1 rounded-xl border border-slate-200 px-3 text-sm outline-none transition focus:border-emerald-600" />
+                <button type="button" disabled={creatingCooperative || !newCooperativeName.trim()} onClick={() => void createCooperative()} className="h-10 rounded-xl border border-emerald-200 bg-emerald-50 px-4 text-sm font-bold text-emerald-700 disabled:opacity-50">
+                  {creatingCooperative ? "Adding..." : "Add cooperative"}
+                </button>
+              </span>
             </label>
             <label className="grid gap-1.5 text-xs font-semibold text-slate-600">
               Village
